@@ -34,7 +34,7 @@
 
     <script>
         document.getElementById('fetchDataBtn').addEventListener('click', function() {
-            fetch('https://www.cwl.gov.cn/cwl_admin/front/cwlkj/search/kjxx/findDrawNotice?name=kl8&pageNo=1&pageSize=101&week=&systemType=PC')
+            fetch('https://cors-anywhere.herokuapp.com/https://www.cwl.gov.cn/cwl_admin/front/cwlkj/search/kjxx/findDrawNotice?name=kl8&pageNo=1&pageSize=101&week=&systemType=PC')
                 .then(response => response.json())
                 .then(data => {
                     if (data.state === 0 && data.result) {
