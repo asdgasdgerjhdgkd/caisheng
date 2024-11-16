@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>澳门开奖数据</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+            background-color: #f4f4f9;
+        }
+        .tables-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 48%;
+            margin: 10px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .number-animal {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .numbers, .animals {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="tables-container">
+        <table id="oldMacauTable">
+            <thead>
+                <tr>
+                    <th>期号</th>
+                    <th>老澳门  开奖号码 + 生肖</th>
+                    <th>开奖时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 老澳门数据 -->
+            </tbody>
+        </table>
+        <table id="newMacauTable">
+            <thead>
+                <tr>
+                    <th>期号</th>
+                    <th>新澳门  开奖号码 + 生肖</th>
+                    <th>开奖时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 新澳门数据 -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const numberToAnimal = {
+            '01': '龍', '02': '兔', '03': '虎', '04': '牛', '05': '鼠', '06': '豬',
+            '07': '狗', '08': '雞', '09': '猴', '10': '羊', '11': '馬', '12': '蛇',
+            '13': '龍', '14': '兔', '15': '虎', '16': '牛', '17': '鼠', '18': '豬',
+            '19': '狗', '20': '雞', '21': '猴', '22': '羊', '23': '馬', '24': '蛇',
+            '25': '龍', '26': '兔', '27': '虎', '28': '牛', '29': '鼠', '30': '豬',
+            '31': '狗', '32': '雞', '33': '猴', '34': '羊', '35': '馬', '36': '蛇',
+            '37': '龍', '38': '兔', '39': '虎', '40': '牛', '41': '鼠', '42': '豬',
+            '43': '狗', '44': '雞', '45': '猴', '46': '羊', '47': '馬', '48': '蛇',
+            '49': '龍'
+        };
+
+        let autoRefreshInterval = null;
+
+        // Automatically fetch data when the page loads
+        window.onload = fetchData;
+
+        function fetchData() {
+            fetchOldMacauData();
+            fetchNewMacauData();
+        }
+
+        function fetchOldMacauData() {
+            fetch('https://his4.szyasidz.com/api/HistoryOpenInfo/2032/11')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 0) {
+                        const tableBody = document.getElementById('oldMacauTable').querySelector('tbody');
+                        tableBody.innerHTML = ''; // Clear existing data
+                        data.data.slice(0, 100).sort((a, b) => b.issue - a.issue).forEach(item => {
+                            const numbers = item.openCode.split(',');
+                            const animals = numbers.map(num => numberToAnimal[num.padStart(2, '0')]);
+                            const openCodeWithAnimal = `
+                                <div class="number-animal">
+                                    <div class="numbers">${numbers.map(num => `<span>${num}</span>`).join('')}</div>
+                                    <div class="animals">${animals.map(animal => `<span>${animal}</span>`).join('')}</div>
+                                </div>
+                            `;
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.issue}</td>
+                                <td>${openCodeWithAnimal}</td>
+                                <td>${item.openTime}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching old Macau data:', error));
+        }
+
+        function fetchNewMacauData() {
+            fetch('https://api.macaumarksix.com/history/macaujc2/y/2024')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        const tableBody = document.getElementById('newMacauTable').querySelector('tbody');
+                        tableBody.innerHTML = ''; // Clear existing data
+                        data.data.slice(0, 100).sort((a, b) => b.expect - a.expect).forEach(item => {
+                            const numbers = item.openCode.split(',');
+                            const animals = item.zodiac.split(',');
+                            const openCodeWithAnimal = `
+                                <div class="number-animal">
+                                    <div class="numbers">${numbers.map(num => `<span>${num}</span>`).join('')}</div>
+                                    <div class="animals">${animals.map(animal => `<span>${animal}</span>`).join('')}</div>
+                                </div>
+                            `;
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.expect}</td>
+                                <td>${openCodeWithAnimal}</td>
+                                <td>${item.openTime}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching new Macau data:', error));
+        }
+
+        function checkAutoRefresh() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+
+            if (hours === 21 && minutes >= 30 && minutes < 40) {
+                if (!autoRefreshInterval) {
+                    autoRefreshInterval = setInterval(fetchData, 500);
+                }
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
+
+        // Check every minute if we need to start or stop auto-refreshing
+        setInterval(checkAutoRefresh, 60000);
+    </script>
+</body>
+</html>
