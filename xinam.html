@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>新澳门</title>
+    <style>
+        #dataDisplay {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        button, input[type="text"] {
+            font-size: 35px;
+            padding: 50px 60px;
+            margin: 15px;
+        }
+        #resultDisplay {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 45px;
+            font-weight: bold;
+        }
+        #statsDisplay {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div id="resultDisplay"></div> <!-- 用于显示特别号码和推荐生肖 -->
+<div id="dataDisplay">
+    <!-- 所有期数的数据将在这里显示 -->
+</div>
+<div id="statsDisplay">
+    <!-- 统计结果将在这里显示 -->
+</div>
+
+<script>
+// 建立号码到生肖的映射（使用繁体字）
+const numberToAnimal = {
+    '01': '龍', '02': '兔', '03': '虎', '04': '牛', '05': '鼠', '06': '豬',
+    '07': '狗', '08': '雞', '09': '猴', '10': '羊', '11': '馬', '12': '蛇',
+    '13': '龍', '14': '兔', '15': '虎', '16': '牛', '17': '鼠', '18': '豬',
+    '19': '狗', '20': '雞', '21': '猴', '22': '羊', '23': '馬', '24': '蛇',
+    '25': '龍', '26': '兔', '27': '虎', '28': '牛', '29': '鼠', '30': '豬',
+    '31': '狗', '32': '雞', '33': '猴', '34': '羊', '35': '馬', '36': '蛇',
+    '37': '龍', '38': '兔', '39': '虎', '40': '牛', '41': '鼠', '42': '豬',
+    '43': '狗', '44': '雞', '45': '猴', '46': '羊', '47': '馬', '48': '蛇',
+    '49': '龍'
+};
+
+let latestData = null;
+let numberFrequency = {};
+let numberIntervals = {};
+let numberLastSeen = {};
+let numberProbability = {};
+
+function fetchDataAndDisplay() {
+    fetch('https://api.macaumarksix.com/history/macaujc2/y/2024')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if(data.result && data.data && data.data.length > 0) {
+                let htmlContent = '';
+                const filteredData = data.data.slice(0, 101); // 获取最近100期数据
+                filteredData.forEach((item, index) => {
+                    const openCodeArr = item.openCode.split(","); // 将开奖号码以逗号分隔成数组
+                    const pingma = openCodeArr.slice(0, 6); // 平码为前六位
+                    const tema = openCodeArr[6]; // 特码为第七位
+
+                    const pingmaAnimals = pingma.map(num => numberToAnimal[num.padStart(2, '0')]).join(','); // 平码的生肖
+                    const temaAnimal = numberToAnimal[tema.padStart(2, '0')]; // 特码的生肖
+                    htmlContent += 
+                        `<div class="data-item">
+                            <p>期号: ${item.expect}</p>
+                            <p>平码: ${pingma.join(",")} </p>
+                            <p>生肖：${pingmaAnimals} </p>
+                            <p>特码: ${tema} </p>
+                            <p>生肖：${temaAnimal} </p>
+                            <hr>
+                        </div>`;
+
+                    // 统计号码出现次数和间隔期数
+                    const allNumbers = [...pingma, tema];
+                    allNumbers.forEach(num => {
+                        if (!numberFrequency[num]) {
+                            numberFrequency[num] = 0;
+                            numberIntervals[num] = 0;
+                            numberLastSeen[num] = index;
+                        }
+                        numberFrequency[num]++;
+
+                        if (numberLastSeen[num] !== index) {
+                            numberIntervals[num] += (index - numberLastSeen[num]);
+                            numberLastSeen[num] = index;
+                        }
+                    });
+                });
+
+                // 将数据展示到页面上
+                document.getElementById("dataDisplay").innerHTML = htmlContent;
+
+                // 计算号码概率
+                Object.keys(numberFrequency).forEach(num => {
+                    const occurrences = numberFrequency[num];
+                    const intervals = numberIntervals[num];
+                    const averageMiss = filteredData.length / (occurrences + 1);
+                    numberProbability[num] = (occurrences + intervals + averageMiss) / 3;
+                });
+
+                // 排序号码概率
+                const sortedNumbers = Object.entries(numberProbability).sort((a, b) => b[1] - a[1]);
+
+                // 显示统计结果
+                let statsContent = '<h3>号码概率</h3>';
+                sortedNumbers.forEach(([num, prob], index) => {
+                    statsContent += `<p>${index + 1}位：号码 ${num} 概率值： ${prob.toFixed(2)} </p>`;
+                });
+                document.getElementById("statsDisplay").innerHTML = statsContent;
+
+                // 保存最新一期的数据
+                latestData = filteredData[0];
+
+                // Generate fortune immediately
+                generateFortune(sortedNumbers);
+
+            } else {
+                document.getElementById("dataDisplay").innerHTML = "<p>无法获取数据，请检查API或数据格式。</p>";
+            }
+        })
+        .catch(error => {
+            console.error('There has been a problem with your fetch operation:', error);
+            document.getElementById("dataDisplay").innerHTML = `<p>请求错误: ${error.message}</p>`;
+        });
+}
+
+function generateFortune(sortedNumbers) {
+    if (!latestData) return;
+
+    const openCodeArr = latestData.openCode.split(",");
+    const tema = openCodeArr[6];
+    const pingma = openCodeArr.slice(0, 6);
+
+    // 根据特码数字选择对应位置序号中的号码
+    const temaIndex = parseInt(tema) - 1;
+    const temaRecommendedNumber = sortedNumbers[temaIndex] ? sortedNumbers[temaIndex][0] : '无推荐';
+    const temaRecommendedAnimal = numberToAnimal[temaRecommendedNumber.padStart(2, '0')];
+
+    // 根据平码数字选择对应位置序号中的号码
+    const pingmaRecommendedNumbers = pingma.map(num => {
+        const index = parseInt(num) - 1;
+        return sortedNumbers[index] ? sortedNumbers[index][0] : '无推荐';
+    });
+    const pingmaRecommendedAnimals = pingmaRecommendedNumbers.map(num => numberToAnimal[num.padStart(2, '0')]);
+
+    // 找出未在推荐号码中的生肖
+    const allAnimals = new Set(Object.values(numberToAnimal));
+    const recommendedAnimals = new Set([temaRecommendedAnimal, ...pingmaRecommendedAnimals]);
+    const unrecommendedAnimals = [...allAnimals].filter(animal => !recommendedAnimals.has(animal));
+
+    // 输出结果到页面
+    const resultDisplay = document.getElementById("resultDisplay");
+    resultDisplay.innerHTML = `
+        <p>特别号码: ${temaRecommendedNumber} (${temaRecommendedAnimal})</p>
+        <p>推荐号码: ${pingmaRecommendedNumbers.map((num, i) => `${num} (${pingmaRecommendedAnimals[i]})`).join(', ')}</p>
+        <p>推荐生肖: ${unrecommendedAnimals.join(', ')}</p>
+    `;
+}
+
+// Call the function to fetch data and display it when the page loads
+window.onload = fetchDataAndDisplay;
+</script>
+
+</body>
+</html>
