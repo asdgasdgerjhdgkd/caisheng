@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -68,25 +68,31 @@ async function fetchData() {
 function calculateProbabilities(data) {
     const numberStats = {};
     for (let i = 1; i <= 80; i++) {
-        numberStats[i] = { count: 0, lastSeen: -1, totalGap: 0 };
+        numberStats[i] = { count: 0, lastSeenIssue: null, totalGap: 0 };
     }
 
-    data.forEach((draw, index) => {
+    // 将数据按时间顺序从早到晚排序
+    data.reverse();
+
+    data.forEach((draw) => {
+        const issue = Number(draw.preDrawIssue);
         const numbers = draw.preDrawCode.split(',').map(Number);
         numbers.forEach(number => {
-            if (numberStats[number].lastSeen !== -1) {
-                const gap = index - numberStats[number].lastSeen;
-                numberStats[number].totalGap += gap;
+            const stats = numberStats[number];
+            if (stats.lastSeenIssue !== null) {
+                const gap = issue - stats.lastSeenIssue;
+                stats.totalGap += gap;
             }
-            numberStats[number].lastSeen = index;
-            numberStats[number].count += 1;
+            stats.lastSeenIssue = issue;
+            stats.count += 1;
         });
     });
 
-    const totalDraws = data.length;
+    const totalPeriods = data.length;
+
     const probabilities = Object.keys(numberStats).map(number => {
         const stats = numberStats[number];
-        const averageMiss = totalDraws / (stats.count + 1);
+        const averageMiss = totalPeriods / (stats.count + 1);
         const probability = (stats.count + stats.totalGap + averageMiss) / 3;
         return { number: Number(number), probability };
     });
