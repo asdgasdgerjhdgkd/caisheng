@@ -32,7 +32,7 @@
 
 <div id="resultDisplay"></div> <!-- 用于显示特别号码和推荐生肖 -->
 <div id="dataDisplay">
-    <!-- 所有期数的数据将在这里显示 -->
+    <!-- 最新一期的数据将在这里显示 -->
 </div>
 <div id="statsDisplay">
     <!-- 统计结果将在这里显示 -->
@@ -68,51 +68,68 @@ function fetchDataAndDisplay() {
         })
         .then(data => {
             if(data.code === 0 && data.data && data.data.length > 0) {
-                let htmlContent = '';
-                const filteredData = data.data.slice(0, 100); // 获取最近100期数据
-                filteredData.forEach((item, index) => {
-                    const openCodeArr = item.openCode.split(","); // 将开奖号码以逗号分隔成数组
-                    const pingma = openCodeArr.slice(0, 6); // 平码为前六位
-                    const tema = openCodeArr[6]; // 特码为第七位
+                const filteredData = data.data.slice(0, 101); // 获取最近101期数据
+                const totalIssues = filteredData.length; // 统计期数
 
-                    const pingmaAnimals = pingma.map(num => numberToAnimal[num.padStart(2, '0')]).join(','); // 平码的生肖
-                    const temaAnimal = numberToAnimal[tema.padStart(2, '0')]; // 特码的生肖
-                    htmlContent += 
-                        `<div class="data-item">
-                            <p>期号: ${item.issue}</p>
-                            <p>平码: ${pingma.join(",")} </p>
-                            <p>生肖：${pingmaAnimals} </p>
-                            <p>特码: ${tema} </p>
-                            <p>生肖：${temaAnimal} </p>
-                            <hr>
-                        </div>`;
+                // 将期号转换为数字并排序，以便正确计算间隔期数
+                filteredData.sort((a, b) => parseInt(a.issue) - parseInt(b.issue));
 
-                    // 统计号码出现次数和间隔期数
-                    const allNumbers = [...pingma, tema];
+                // 只显示最新一期的数据
+                latestData = filteredData[filteredData.length - 1]; // 最新一期的数据
+                const openCodeArr = latestData.openCode.split(","); // 将开奖号码以逗号分隔成数组
+                const pingma = openCodeArr.slice(0, 6); // 平码为前六位
+                const tema = openCodeArr[6]; // 特码为第七位
+
+                const pingmaAnimals = pingma.map(num => numberToAnimal[num.padStart(2, '0')]).join(','); // 平码的生肖
+                const temaAnimal = numberToAnimal[tema.padStart(2, '0')]; // 特码的生肖
+                const htmlContent = 
+                    `<div class="data-item">
+                        <p>期号: ${latestData.issue}</p>
+                        <p>平码: ${pingma.join(",")} </p>
+                        <p>生肖：${pingmaAnimals} </p>
+                        <p>特码: ${tema} </p>
+                        <p>生肖：${temaAnimal} </p>
+                        <hr>
+                    </div>`;
+
+                document.getElementById("dataDisplay").innerHTML = htmlContent;
+
+                // 统计号码出现次数和间隔期数
+                filteredData.forEach((item) => {
+                    const openCodeArr = item.openCode.split(",");
+                    const allNumbers = [...openCodeArr.slice(0, 6), openCodeArr[6]];
                     allNumbers.forEach(num => {
-                        if (!numberFrequency[num]) {
-                            numberFrequency[num] = 0;
-                            numberIntervals[num] = 0;
-                            numberLastSeen[num] = index;
-                        }
-                        numberFrequency[num]++;
+                        const issueNumber = parseInt(item.issue);
 
-                        if (numberLastSeen[num] !== index) {
-                            numberIntervals[num] += (index - numberLastSeen[num]);
-                            numberLastSeen[num] = index;
+                        // 更新出现次数
+                        if (!numberFrequency[num]) {
+                            numberFrequency[num] = 1;
+                        } else {
+                            numberFrequency[num]++;
+                        }
+
+                        // 更新间隔期数
+                        if (!numberLastSeen[num]) {
+                            numberLastSeen[num] = issueNumber;
+                            numberIntervals[num] = 0; // 初始间隔为0
+                        } else {
+                            const interval = issueNumber - numberLastSeen[num];
+                            numberIntervals[num] += interval;
+                            numberLastSeen[num] = issueNumber;
                         }
                     });
                 });
 
-                // 将数据展示到页面上
-                document.getElementById("dataDisplay").innerHTML = htmlContent;
-
-                // 计算号码概率
+                // 计算平均遗漏和号码概率
                 Object.keys(numberFrequency).forEach(num => {
                     const occurrences = numberFrequency[num];
                     const intervals = numberIntervals[num];
-                    const averageMiss = filteredData.length / (occurrences + 1);
-                    numberProbability[num] = (occurrences + intervals + averageMiss) / 3;
+
+                    // 平均遗漏 = 统计期数 / (出现次数 + 1)
+                    const averageMiss = totalIssues / (occurrences + 1);
+
+                    // 号码概率 = {(出现次数) + (间隔期数) + (平均遗漏)} / 3
+                    numberProbability[num] = ((occurrences) + (intervals) + (averageMiss)) / 3;
                 });
 
                 // 排序号码概率
@@ -121,14 +138,11 @@ function fetchDataAndDisplay() {
                 // 显示统计结果
                 let statsContent = '<h3>号码概率</h3>';
                 sortedNumbers.forEach(([num, prob], index) => {
-                    statsContent += `<p>${index + 1}位：号码 ${num} 概率值： ${prob.toFixed(2)} </p>`;
+                    statsContent += `<p>第${index + 1}位：号码 ${num} 概率值： ${prob.toFixed(2)} </p>`;
                 });
                 document.getElementById("statsDisplay").innerHTML = statsContent;
 
-                // 保存最新一期的数据
-                latestData = filteredData[0];
-
-                // Generate fortune immediately
+                // 立即生成推荐内容
                 generateFortune(sortedNumbers);
 
             } else {
@@ -141,6 +155,7 @@ function fetchDataAndDisplay() {
         });
 }
 
+// 生成推荐内容的函数保持不变
 function generateFortune(sortedNumbers) {
     if (!latestData) return;
 
@@ -173,7 +188,7 @@ function generateFortune(sortedNumbers) {
     `;
 }
 
-// Call the function to fetch data and display it when the page loads
+// 页面加载时调用函数
 window.onload = fetchDataAndDisplay;
 </script>
 
