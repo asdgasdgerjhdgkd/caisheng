@@ -1,0 +1,181 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双色球</title>
+<style>
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        flex-direction: column;
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f9;
+    }
+    .container {
+        max-width: 800px;
+        margin: auto;
+        padding: 20px;
+    }
+    h1, h3, p {
+        text-align: center;
+        color: #333;
+    }
+    .combinations, .results, .probabilities {
+        margin-bottom: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>双色球</h1>
+    <div id="combinationsDisplay" class="combinations"></div>
+    <div id="resultDisplay" class="results"></div>
+    <div id="probabilityDisplay" class="probabilities"></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    fetchLotteryData();
+});
+
+function fetchLotteryData() {
+    const url = "https://api.apiose188.com/QuanGuoCai/getHistoryLotteryInfo.do?&lotCode=10039";
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.errorCode === 0 && data.result.businessCode === 0) {
+                processLotteryData(data.result.data);
+            } else {
+                alert("数据获取失败，请稍后重试！");
+            }
+        })
+        .catch(error => console.error('Error fetching data:', error));
+}
+
+function processLotteryData(data) {
+    const lotteryData = data.map((item, index) => {
+        const codes = item.preDrawCode.split(',');
+        return {
+            code: item.preDrawIssue,
+            date: item.preDrawTime,
+            red: codes.slice(0, 6).map(Number),
+            blue: Number(codes[6]),
+            index: index
+        };
+    });
+
+    const redStats = calculateStats(lotteryData, 'red', 33);
+    const blueStats = calculateStats(lotteryData, 'blue', 16);
+
+    generateCombinations(lotteryData, redStats, blueStats);
+    displayLatestResults(lotteryData);
+    displayProbabilityResults(redStats, blueStats);
+}
+
+function calculateStats(lotteryData, type, maxNumber) {
+    const stats = Array.from({ length: maxNumber }, (_, i) => ({
+        number: i + 1,
+        occurrences: 0,
+        intervals: 0,
+        lastIndex: null
+    }));
+
+    lotteryData.forEach((draw, index) => {
+        const numbers = type === 'red' ? draw.red : [draw.blue];
+        numbers.forEach(num => {
+            const stat = stats[num - 1];
+            stat.occurrences++;
+            if (stat.lastIndex !== null) {
+                stat.intervals += (index - stat.lastIndex);
+            }
+            stat.lastIndex = index;
+        });
+    });
+
+    stats.forEach(stat => {
+        stat.averageOmission = lotteryData.length / (stat.occurrences + 1);
+        stat.probability = (stat.occurrences + stat.intervals + stat.averageOmission) / 3;
+    });
+
+    return stats.sort((a, b) => b.probability - a.probability);
+}
+
+function displayLatestResults(lotteryData) {
+    const latestResults = lotteryData.slice(0, 5);
+    const resultDisplay = document.getElementById("resultDisplay");
+
+    const rows = latestResults.map(draw => `
+        <tr>
+            <td>${draw.code}</td>
+            <td>${draw.red.join(', ')}</td>
+            <td>${draw.blue}</td>
+            <td>${draw.date}</td>
+        </tr>
+    `).join('');
+
+    resultDisplay.innerHTML = `
+        <h3>最新五期结果</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>期号</th>
+                    <th>红区号码</th>
+                    <th>蓝区号码</th>
+                    <th>日期</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+    `;
+}
+
+function displayProbabilityResults(redStats, blueStats) {
+    const redDisplay = redStats.map((item, index) => `第${index + 1}位: ${item.number} (概率: ${item.probability.toFixed(2)})`).join('<br>');
+    const blueDisplay = blueStats.map((item, index) => `第${index + 1}位: ${item.number} (概率: ${item.probability.toFixed(2)})`).join('<br>');
+
+    const probabilityDisplay = document.getElementById("probabilityDisplay");
+    probabilityDisplay.innerHTML = `
+        <h3>红区号码概率</h3>
+        <p>${redDisplay}</p>
+        <h3>蓝区号码概率</h3>
+        <p>${blueDisplay}</p>
+    `;
+}
+
+function generateCombinations(lotteryData, redStats, blueStats) {
+    const latestResults = lotteryData.slice(0, 5);
+    const combinations = latestResults.map(item => {
+        const frontNumbers = item.red.map(num => redStats[num - 1].number);
+        const backNumbers = [blueStats[item.blue - 1].number];
+        return { frontNumbers, backNumbers };
+    });
+
+    const combinationsDisplay = document.getElementById("combinationsDisplay");
+    const combinationsHTML = combinations.map((combination, index) => `
+        <p>第 ${index + 1} 组: 红区号码 ${combination.frontNumbers.join(', ')}, 蓝区号码 ${combination.backNumbers.join(', ')}</p>
+    `).join('');
+
+    combinationsDisplay.innerHTML = `<h3>五组号码组合</h3>${combinationsHTML}`;
+}
+</script>
+</body>
+</html>

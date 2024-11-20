@@ -1,0 +1,160 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大乐透</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .lottery-table {
+        width: 80%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .lottery-table th, .lottery-table td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: center;
+    }
+    #resultDisplay, #combinationsDisplay {
+        text-align: center;
+        margin: 20px 0;
+        width: 80%;
+    }
+    h3 {
+        margin: 10px 0;
+    }
+</style>
+</head>
+<body>
+    <h1>大乐透</h1>
+    <div id="combinationsDisplay"></div>
+    <table class="lottery-table" id="lotteryTable">
+        <thead>
+            <tr>
+                <th>期号</th>
+                <th>开奖号码</th>
+                <th>日期</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 开奖信息将在这里动态插入 -->
+        </tbody>
+    </table>
+    <div id="resultDisplay"></div>
+
+    <script>
+        let frontAreaFrequency = Array.from({ length: 35 }, () => ({ count: 0, totalInterval: 0, lastIndex: -1 }));
+        let backAreaFrequency = Array.from({ length: 12 }, () => ({ count: 0, totalInterval: 0, lastIndex: -1 }));
+        let lotteryData = [];
+
+        // 格式化开奖号码，将前区和后区分开
+        function formatLotteryResult(result) {
+            const numbers = result.split(' ');
+            return `前区:${numbers.slice(0, 5).join(',')} + 后区:${numbers.slice(5).join(',')}`;
+        }
+
+        // 获取开奖结果并处理
+        function fetchLotteryInfo() {
+            fetch('https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry?gameNo=85&provinceId=0&pageSize=101&isVerify=1&pageNo=1')
+                .then(response => response.json())
+                .then(data => {
+                    lotteryData = data.value.list;
+                    const rows = lotteryData.map(item => {
+                        const formattedResult = formatLotteryResult(item.lotteryDrawResult);
+                        return `<tr>
+                            <td>${item.lotteryDrawNum}</td>
+                            <td>${formattedResult}</td>
+                            <td>${item.lotteryDrawTime}</td>
+                        </tr>`;
+                    }).join('');
+                    document.querySelector('#lotteryTable tbody').innerHTML = rows;
+
+                    // 分离前区和后区号码
+                    const openCodeData = lotteryData.map(item => item.lotteryDrawResult.split(" "));
+                    const frontAreaNumbers = openCodeData.map(numbers => numbers.slice(0, 5).map(Number));
+                    const backAreaNumbers = openCodeData.map(numbers => numbers.slice(5).map(Number));
+
+                    calculateStatistics(frontAreaNumbers, frontAreaFrequency, 35);
+                    calculateStatistics(backAreaNumbers, backAreaFrequency, 12);
+
+                    // 排序并显示统计结果
+                    displayFrequencyResults();
+                    generateCombinations();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // 计算统计数据
+        function calculateStatistics(numbersArray, frequencyArray, maxNumber) {
+            numbersArray.forEach((numbers, drawIndex) => {
+                numbers.forEach(number => {
+                    const index = number - 1;
+                    frequencyArray[index].count++;
+                    if (frequencyArray[index].lastIndex !== -1) {
+                        frequencyArray[index].totalInterval += (drawIndex - frequencyArray[index].lastIndex);
+                    }
+                    frequencyArray[index].lastIndex = drawIndex;
+                });
+            });
+
+            frequencyArray.forEach((item, index) => {
+                const totalDraws = numbersArray.length;
+                const averageMiss = totalDraws / (item.count + 1);
+                item.probability = (item.count + item.totalInterval + averageMiss) / 3;
+            });
+        }
+
+        // 显示统计结果
+        function displayFrequencyResults() {
+            const frontAreaSorted = frontAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
+                .sort((a, b) => b.probability - a.probability);
+            const backAreaSorted = backAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
+                .sort((a, b) => b.probability - a.probability);
+
+            const frontAreaDisplay = frontAreaSorted.map((item, index) => `第${index + 1}位: ${item.num} (${item.probability.toFixed(2)})`).join('<br>');
+            const backAreaDisplay = backAreaSorted.map((item, index) => `第${index + 1}位: ${item.num} (${item.probability.toFixed(2)})`).join('<br>');
+
+            document.getElementById('resultDisplay').innerHTML = `
+                <h3>前区号码概率</h3>
+                <p>${frontAreaDisplay}</p>
+                <h3>后区号码概率</h3>
+                <p>${backAreaDisplay}</p>
+            `;
+        }
+
+        // 生成组合
+        function generateCombinations() {
+            const frontAreaSorted = frontAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
+                .sort((a, b) => b.probability - a.probability);
+            const backAreaSorted = backAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
+                .sort((a, b) => b.probability - a.probability);
+
+            const latestDraws = lotteryData.slice(0, 5).map(item => item.lotteryDrawResult.split(" "));
+            const combinations = latestDraws.map(draw => {
+                const frontNumbers = draw.slice(0, 5).map(Number).map(num => frontAreaSorted[num - 1].num);
+                const backNumbers = draw.slice(5).map(Number).map(num => backAreaSorted[num - 1].num);
+                return { frontNumbers, backNumbers };
+            });
+
+            const combinationsDisplay = combinations.map((combination, index) => `
+                <p>第${index + 1}组: 前区号码 ${combination.frontNumbers.join(', ')}, 后区号码 ${combination.backNumbers.join(', ')}</p>
+            `).join('');
+
+            document.getElementById('combinationsDisplay').innerHTML = `
+                <h3>五组号码组合：</h3>${combinationsDisplay}
+            `;
+        }
+
+        // 自动执行
+        fetchLotteryInfo();
+    </script>
+</body>
+</html>
