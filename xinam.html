@@ -32,7 +32,7 @@
 
 <div id="resultDisplay"></div> <!-- 用于显示特别号码和推荐生肖 -->
 <div id="dataDisplay">
-    <!-- 所有期数的数据将在这里显示 -->
+    <!-- 最新一期的数据将在这里显示 -->
 </div>
 <div id="statsDisplay">
     <!-- 统计结果将在这里显示 -->
@@ -53,10 +53,10 @@ const numberToAnimal = {
 };
 
 let latestData = null;
-let numberFrequency = {};
-let numberIntervals = {};
-let numberLastSeen = {};
-let numberProbability = {};
+let numberFrequency = {}; // 出现次数
+let numberIntervals = {}; // 间隔期数
+let numberLastSeen = {};  // 上次出现的索引
+let numberProbability = {}; // 号码概率
 
 function fetchDataAndDisplay() {
     fetch('https://api.macaumarksix.com/history/macaujc2/y/2024')
@@ -68,54 +68,66 @@ function fetchDataAndDisplay() {
         })
         .then(data => {
             if(data.result && data.data && data.data.length > 0) {
-                let htmlContent = '';
-                const filteredData = data.data.slice(0, 101); // 获取最近100期数据
+                const filteredData = data.data.slice(0, 101); // 获取最近101期数据
+                filteredData.reverse(); // 将数据按时间顺序排列
+
+                // 保存最新一期的数据
+                latestData = filteredData[filteredData.length - 1];
+
+                // 只显示最新一期的数据
+                const latestOpenCodeArr = latestData.openCode.split(",");
+                const latestPingma = latestOpenCodeArr.slice(0, 6);
+                const latestTema = latestOpenCodeArr[6];
+                const latestPingmaAnimals = latestPingma.map(num => numberToAnimal[num.padStart(2, '0')]).join(',');
+                const latestTemaAnimal = numberToAnimal[latestTema.padStart(2, '0')];
+                
+                let htmlContent = `
+                    <div class="data-item">
+                        <p>期号: ${latestData.expect}</p>
+                        <p>平码: ${latestPingma.join(",")} </p>
+                        <p>生肖：${latestPingmaAnimals} </p>
+                        <p>特码: ${latestTema} </p>
+                        <p>生肖：${latestTemaAnimal} </p>
+                        <hr>
+                    </div>`;
+
+                // 统计号码出现次数和间隔期数
                 filteredData.forEach((item, index) => {
                     const openCodeArr = item.openCode.split(","); // 将开奖号码以逗号分隔成数组
                     const pingma = openCodeArr.slice(0, 6); // 平码为前六位
                     const tema = openCodeArr[6]; // 特码为第七位
 
-                    const pingmaAnimals = pingma.map(num => numberToAnimal[num.padStart(2, '0')]).join(','); // 平码的生肖
-                    const temaAnimal = numberToAnimal[tema.padStart(2, '0')]; // 特码的生肖
-                    htmlContent += 
-                        `<div class="data-item">
-                            <p>期号: ${item.expect}</p>
-                            <p>平码: ${pingma.join(",")} </p>
-                            <p>生肖：${pingmaAnimals} </p>
-                            <p>特码: ${tema} </p>
-                            <p>生肖：${temaAnimal} </p>
-                            <hr>
-                        </div>`;
-
-                    // 统计号码出现次数和间隔期数
                     const allNumbers = [...pingma, tema];
                     allNumbers.forEach(num => {
-                        if (!numberFrequency[num]) {
-                            numberFrequency[num] = 0;
-                            numberIntervals[num] = 0;
-                            numberLastSeen[num] = index;
+                        if (numberFrequency[num] === undefined) {
+                            numberFrequency[num] = 0; // 出现次数
+                            numberIntervals[num] = 0; // 间隔期数
+                            numberLastSeen[num] = null; // 上次出现的索引
                         }
+                        // 更新出现次数
                         numberFrequency[num]++;
 
-                        if (numberLastSeen[num] !== index) {
-                            numberIntervals[num] += (index - numberLastSeen[num]);
-                            numberLastSeen[num] = index;
+                        if (numberLastSeen[num] !== null) {
+                            // 计算当前索引与上次出现索引的差值
+                            let interval = index - numberLastSeen[num];
+                            // 累加间隔期数
+                            numberIntervals[num] += interval;
                         }
+                        // 更新最后出现的索引为当前索引
+                        numberLastSeen[num] = index;
                     });
                 });
 
-                // 将数据展示到页面上
-                document.getElementById("dataDisplay").innerHTML = htmlContent;
-
                 // 计算号码概率
                 Object.keys(numberFrequency).forEach(num => {
-                    const occurrences = numberFrequency[num];
-                    const intervals = numberIntervals[num];
-                    const averageMiss = filteredData.length / (occurrences + 1);
+                    const occurrences = numberFrequency[num]; // 出现次数
+                    const intervals = numberIntervals[num];   // 间隔期数
+                    const averageMiss = filteredData.length / (occurrences + 1); // 平均遗漏
+                    // 号码概率 = （出现次数 + 间隔期数 + 平均遗漏）/ 3
                     numberProbability[num] = (occurrences + intervals + averageMiss) / 3;
                 });
 
-                // 排序号码概率
+                // 按照号码概率降序排序
                 const sortedNumbers = Object.entries(numberProbability).sort((a, b) => b[1] - a[1]);
 
                 // 显示统计结果
@@ -125,11 +137,11 @@ function fetchDataAndDisplay() {
                 });
                 document.getElementById("statsDisplay").innerHTML = statsContent;
 
-                // 保存最新一期的数据
-                latestData = filteredData[0];
-
-                // Generate fortune immediately
+                // 生成预测结果
                 generateFortune(sortedNumbers);
+
+                // 将最新一期数据展示到页面上
+                document.getElementById("dataDisplay").innerHTML = htmlContent;
 
             } else {
                 document.getElementById("dataDisplay").innerHTML = "<p>无法获取数据，请检查API或数据格式。</p>";
@@ -173,7 +185,7 @@ function generateFortune(sortedNumbers) {
     `;
 }
 
-// Call the function to fetch data and display it when the page loads
+// 页面加载时调用函数获取并显示数据
 window.onload = fetchDataAndDisplay;
 </script>
 
