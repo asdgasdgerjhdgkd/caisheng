@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -90,28 +90,32 @@ function processLotteryData(data) {
 }
 
 function calculateStats(lotteryData, type, maxNumber) {
+    // 只处理最近的101期数据
+    const data = lotteryData.slice(0, 101).reverse();
+    const totalPeriods = data.length;
     const stats = Array.from({ length: maxNumber }, (_, i) => ({
         number: i + 1,
         occurrences: 0,
-        intervals: 0,
-        lastIndex: null
+        totalIntervals: 0,
+        lastAppearIndex: null
     }));
 
-    lotteryData.forEach((draw, index) => {
+    data.forEach((draw, index) => {
         const numbers = type === 'red' ? draw.red : [draw.blue];
         numbers.forEach(num => {
             const stat = stats[num - 1];
-            stat.occurrences++;
-            if (stat.lastIndex !== null) {
-                stat.intervals += (index - stat.lastIndex);
+            if (stat.lastAppearIndex !== null) {
+                const interval = index - stat.lastAppearIndex - 1;
+                stat.totalIntervals += interval;
             }
-            stat.lastIndex = index;
+            stat.lastAppearIndex = index;
+            stat.occurrences++;
         });
     });
 
     stats.forEach(stat => {
-        stat.averageOmission = lotteryData.length / (stat.occurrences + 1);
-        stat.probability = (stat.occurrences + stat.intervals + stat.averageOmission) / 3;
+        stat.averageOmission = totalPeriods / (stat.occurrences + 1);
+        stat.probability = (stat.occurrences + stat.totalIntervals + stat.averageOmission) / 3;
     });
 
     return stats.sort((a, b) => b.probability - a.probability);
@@ -162,12 +166,12 @@ function displayProbabilityResults(redStats, blueStats) {
 }
 
 function generateCombinations(lotteryData, redStats, blueStats) {
-    const latestResults = lotteryData.slice(0, 5);
-    const combinations = latestResults.map(item => {
-        const frontNumbers = item.red.map(num => redStats[num - 1].number);
-        const backNumbers = [blueStats[item.blue - 1].number];
-        return { frontNumbers, backNumbers };
-    });
+    const combinations = [];
+    for (let i = 0; i < 5; i++) {
+        const redNumbers = redStats.slice(i * 6, (i + 1) * 6).map(item => item.number);
+        const blueNumber = blueStats[i % blueStats.length].number;
+        combinations.push({ frontNumbers: redNumbers, backNumbers: [blueNumber] });
+    }
 
     const combinationsDisplay = document.getElementById("combinationsDisplay");
     const combinationsHTML = combinations.map((combination, index) => `
