@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -51,8 +51,8 @@
     <div id="resultDisplay"></div>
 
     <script>
-        let frontAreaFrequency = Array.from({ length: 35 }, () => ({ count: 0, totalInterval: 0, lastIndex: -1 }));
-        let backAreaFrequency = Array.from({ length: 12 }, () => ({ count: 0, totalInterval: 0, lastIndex: -1 }));
+        let frontAreaFrequency = Array.from({ length: 35 }, () => ({ count: 0, totalInterval: 0, lastIndex: -1, averageMiss: 0, probability: 0 }));
+        let backAreaFrequency = Array.from({ length: 12 }, () => ({ count: 0, totalInterval: 0, lastIndex: -1, averageMiss: 0, probability: 0 }));
         let lotteryData = [];
 
         // 格式化开奖号码，将前区和后区分开
@@ -94,21 +94,32 @@
 
         // 计算统计数据
         function calculateStatistics(numbersArray, frequencyArray, maxNumber) {
+            const totalDraws = numbersArray.length;
+            let occurrenceTimes = Array(maxNumber).fill(0);
+            let intervalPeriods = Array(maxNumber).fill(0);
+            let lastAppearanceIndex = Array(maxNumber).fill(-1);
+
+            // 将数据按时间顺序排列
+            numbersArray = numbersArray.slice().reverse();
+
             numbersArray.forEach((numbers, drawIndex) => {
                 numbers.forEach(number => {
                     const index = number - 1;
-                    frequencyArray[index].count++;
-                    if (frequencyArray[index].lastIndex !== -1) {
-                        frequencyArray[index].totalInterval += (drawIndex - frequencyArray[index].lastIndex);
+                    occurrenceTimes[index]++;
+                    if (lastAppearanceIndex[index] !== -1) {
+                        intervalPeriods[index] += (drawIndex - lastAppearanceIndex[index]);
                     }
-                    frequencyArray[index].lastIndex = drawIndex;
+                    lastAppearanceIndex[index] = drawIndex;
                 });
             });
 
+            let averageMisses = occurrenceTimes.map(count => totalDraws / (count + 1));
+
             frequencyArray.forEach((item, index) => {
-                const totalDraws = numbersArray.length;
-                const averageMiss = totalDraws / (item.count + 1);
-                item.probability = (item.count + item.totalInterval + averageMiss) / 3;
+                item.count = occurrenceTimes[index];
+                item.totalInterval = intervalPeriods[index];
+                item.averageMiss = averageMisses[index];
+                item.probability = (item.count + item.totalInterval + item.averageMiss) / 3;
             });
         }
 
@@ -137,12 +148,12 @@
             const backAreaSorted = backAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
                 .sort((a, b) => b.probability - a.probability);
 
-            const latestDraws = lotteryData.slice(0, 5).map(item => item.lotteryDrawResult.split(" "));
-            const combinations = latestDraws.map(draw => {
-                const frontNumbers = draw.slice(0, 5).map(Number).map(num => frontAreaSorted[num - 1].num);
-                const backNumbers = draw.slice(5).map(Number).map(num => backAreaSorted[num - 1].num);
-                return { frontNumbers, backNumbers };
-            });
+            const combinations = [];
+            for (let i = 0; i < 5; i++) {
+                const frontNumbers = frontAreaSorted.slice(i * 5, i * 5 + 5).map(item => item.num);
+                const backNumbers = backAreaSorted.slice(i * 2, i * 2 + 2).map(item => item.num);
+                combinations.push({ frontNumbers, backNumbers });
+            }
 
             const combinationsDisplay = combinations.map((combination, index) => `
                 <p>第${index + 1}组: 前区号码 ${combination.frontNumbers.join(', ')}, 后区号码 ${combination.backNumbers.join(', ')}</p>
