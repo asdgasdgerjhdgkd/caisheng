@@ -183,6 +183,7 @@ function generateFortune(sortedNumbers) {
     // 输出结果到页面
     const resultDisplay = document.getElementById("resultDisplay");
     resultDisplay.innerHTML = `
+        <p>老澳门</p>
         <p>推荐号码: ${temaRecommendedNumber} (${temaRecommendedAnimal}) ${pingmaRecommendedNumbers.map((num, i) => `${num} (${pingmaRecommendedAnimals[i]})`).join(', ')}</p>
         <p>推荐生肖: ${unrecommendedAnimals.join(', ')}</p>
     `;
