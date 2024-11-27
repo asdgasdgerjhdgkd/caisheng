@@ -93,7 +93,7 @@ function fetchDataAndDisplayOld() {
         })
         .then(data => {
             if(data.code === 0 && data.data && data.data.length > 0) {
-                const filteredData = data.data.slice(0, 101); // 获取最近101期数据
+                const filteredData = data.data.slice(0, 100); // 获取最近100期数据
                 const totalIssues = filteredData.length; // 统计期数
 
                 // 将期号转换为数字并排序，以便正确计算间隔期数
@@ -243,7 +243,7 @@ function fetchDataAndDisplayNew() {
         })
         .then(data => {
             if(data.result && data.data && data.data.length > 0) {
-                const filteredData = data.data.slice(0, 101); // 获取最近101期数据
+                const filteredData = data.data.slice(0, 100); // 获取最近100期数据
                 filteredData.reverse(); // 将数据按时间顺序排列
 
                 // 保存最新一期的数据
