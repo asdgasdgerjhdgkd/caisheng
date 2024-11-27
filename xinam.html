@@ -68,7 +68,7 @@ function fetchDataAndDisplay() {
         })
         .then(data => {
             if(data.result && data.data && data.data.length > 0) {
-                const filteredData = data.data.slice(0, 101); // 获取最近101期数据
+                const filteredData = data.data.slice(0, 100); // 获取最近100期数据
                 filteredData.reverse(); // 将数据按时间顺序排列
 
                 // 保存最新一期的数据
