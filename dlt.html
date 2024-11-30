@@ -175,7 +175,7 @@
         function generateCombinations() {
             const combinations = [];
             // 获取最新五期开奖数据
-            const latestFiveDraws = lotteryData.slice(0, 5);
+            const latestFiveDraws = lotteryData.slice(0, 1);
             for (let item of latestFiveDraws) {
                 const numbers = item.lotteryDrawResult.split(' ');
                 const frontNumbers = numbers.slice(0, 5).map(Number);
