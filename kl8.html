@@ -6,154 +6,190 @@
 <title>快乐8</title>
 <style>
     body {
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        min-height: 100vh;
-        margin: 0;
         font-family: Arial, sans-serif;
-        background-color: #f0f0f0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
-    .container {
-        width: 90%;
-        max-width: 800px;
-        margin: 20px;
-        text-align: center;
-        background-color: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    .result-section {
+    .lottery-table {
+        width: 80%;
+        border-collapse: collapse;
         margin-top: 20px;
-        padding: 20px;
-        border: 1px solid #ccc;
-        border-radius: 10px;
-        background-color: #f9f9f9;
     }
-    h1, h2 {
-        margin-bottom: 20px;
+    .lottery-table th, .lottery-table td {
+        border: 1px solid black;
+        padding: 8px;
+        text-align: center;
     }
-    p {
+    #resultDisplay, #combinationsDisplay {
+        text-align: center;
+        margin: 20px 0;
+        width: 80%;
+    }
+    h3 {
         margin: 10px 0;
     }
 </style>
 </head>
 <body>
-<div class="container">
     <h1>快乐8</h1>
-    <div id="combinationsDisplay" class="result-section"></div>
-    <div id="drawHistory" class="result-section"></div>
-    <div id="probabilityDisplay" class="result-section"></div>
-</div>
+    <div id="combinationsDisplay"></div>
+    <table class="lottery-table" id="lotteryTable">
+        <thead>
+            <tr>
+                <th>期号</th>
+                <th>开奖号码</th>
+                <th>日期</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 开奖信息将在这里动态插入 -->
+        </tbody>
+    </table>
+    <div id="resultDisplay"></div>
 
-<script>
-async function fetchData() {
-    const url = "https://api.apiose188.com/LuckTwenty/getBaseLuckTwentyList.do?&lotCode=10073";
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data.errorCode === 0 && data.result.businessCode === 0) {
-            return data.result.data.slice(0, 101); // 获取最近101期的数据
-        } else {
-            alert("无法获取数据，请稍后重试。");
-            return [];
+    <script>
+        let numberFrequency = Array.from({ length: 80 }, () => ({ count: 0, totalInterval: 0, averageMiss: 0, probability: 0 }));
+        let lotteryData = [];
+        let sortedNumbers = [];
+
+        // 格式化开奖号码
+        function formatLotteryResult(result) {
+            return result.split(',').join(', ');
         }
-    } catch (error) {
-        alert("获取数据时出错，请检查网络连接。");
-        return [];
-    }
-}
 
-function calculateProbabilities(data) {
-    const numberStats = {};
-    for (let i = 1; i <= 80; i++) {
-        numberStats[i] = { count: 0, lastSeenIssue: null, totalGap: 0 };
-    }
+        // 获取开奖结果并处理
+        function fetchLotteryInfo() {
+            fetch('https://api.apiose188.com/LuckTwenty/getBaseLuckTwentyList.do?&lotCode=10073')
+                .then(response => response.json())
+                .then(data => {
+                    lotteryData = data.result.data;
+                    const rows = lotteryData.map(item => {
+                        const formattedResult = formatLotteryResult(item.preDrawCode);
+                        return `<tr>
+                            <td>${item.preDrawIssue}</td>
+                            <td>${formattedResult}</td>
+                            <td>${item.preDrawTime}</td>
+                        </tr>`;
+                    }).join('');
+                    document.querySelector('#lotteryTable tbody').innerHTML = rows;
 
-    // 将数据按时间顺序从早到晚排序
-    data.reverse();
+                    // 分离号码
+                    const numberArrays = lotteryData.map(item => item.preDrawCode.split(',').map(Number));
 
-    data.forEach((draw) => {
-        const issue = Number(draw.preDrawIssue);
-        const numbers = draw.preDrawCode.split(',').map(Number);
-        numbers.forEach(number => {
-            const stats = numberStats[number];
-            if (stats.lastSeenIssue !== null) {
-                const gap = issue - stats.lastSeenIssue;
-                stats.totalGap += gap;
+                    calculateStatistics(numberArrays, numberFrequency, 80);
+
+                    // 排序并显示统计结果
+                    displayFrequencyResults();
+                    generateCombinations();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // 计算统计数据
+        function calculateStatistics(numbersArray, frequencyArray, maxNumber) {
+            const totalDraws = numbersArray.length;
+
+            // 初始化数据结构
+            let occurrenceTimes = {};       // 出现次数
+            let intervalPeriods = {};       // 间隔期数
+            let lastAppearanceIndex = {};   // 最后出现索引
+
+            // 将数据按时间顺序排列（最早的在前）
+            numbersArray = numbersArray.slice().reverse();
+
+            // 遍历每期数据
+            for (let i = 0; i < totalDraws; i++) {
+                let drawNumbers = numbersArray[i];
+                for (let num of drawNumbers) {
+                    // 更新出现次数
+                    if (occurrenceTimes[num]) {
+                        occurrenceTimes[num] += 1;
+                    } else {
+                        occurrenceTimes[num] = 1;
+                    }
+
+                    // 计算间隔期数
+                    if (lastAppearanceIndex[num] !== undefined) {
+                        let interval = i - lastAppearanceIndex[num] - 1;
+                        if (intervalPeriods[num]) {
+                            intervalPeriods[num] += interval;
+                        } else {
+                            intervalPeriods[num] = interval;
+                        }
+                    } else {
+                        intervalPeriods[num] = 0; // 首次出现，间隔为0
+                    }
+
+                    // 更新最后出现索引
+                    lastAppearanceIndex[num] = i;
+                }
             }
-            stats.lastSeenIssue = issue;
-            stats.count += 1;
-        });
-    });
 
-    const totalPeriods = data.length;
+            // 计算平均遗漏和号码概率
+            for (let num = 1; num <= maxNumber; num++) {
+                let count = occurrenceTimes[num] || 0;
+                let totalInterval = intervalPeriods[num] || 0;
+                let avgMiss = totalDraws / (count + 1);
 
-    const probabilities = Object.keys(numberStats).map(number => {
-        const stats = numberStats[number];
-        const averageMiss = totalPeriods / (stats.count + 1);
-        const probability = (stats.count + stats.totalGap + averageMiss) / 3;
-        return { number: Number(number), probability };
-    });
+                // 计算号码概率
+                let probability = (count + totalInterval + avgMiss) / 3;
 
-    probabilities.sort((a, b) => b.probability - a.probability);
-    return probabilities;
-}
+                // 更新频率数组
+                frequencyArray[num - 1] = {
+                    count: count,
+                    totalInterval: totalInterval,
+                    averageMiss: avgMiss,
+                    probability: probability
+                };
+            }
+        }
 
-function generateCombinations(probabilities, latestDraw) {
-    const topNumbers = probabilities.map(item => item.number);
+        // 显示统计结果
+        function displayFrequencyResults() {
+            sortedNumbers = numberFrequency.map((item, index) => ({ num: index + 1, ...item }))
+                .sort((a, b) => b.probability - a.probability);
 
-    const frontNumbers = latestDraw.slice(0, 10).map(num => topNumbers[num - 1]);
-    const backNumbers = latestDraw.slice(10, 20).map(num => topNumbers[num - 1]);
-    const middleNumbers = latestDraw.slice(5, 15).map(num => topNumbers[num - 1]);
+            const display = sortedNumbers.map((item, index) => `第${index + 1}位: ${item.num}`).join('<br>');
 
-    return [
-        { name: "第一组", numbers: frontNumbers },
-        { name: "第二组", numbers: backNumbers },
-        { name: "第三组", numbers: middleNumbers }
-    ];
-}
+            document.getElementById('resultDisplay').innerHTML = `
+                <h3>号码概率排名</h3>
+                <p>${display}</p>
+            `;
+        }
 
-function displayResults(combinations, drawHistory, probabilities) {
-    const combinationsDisplay = document.getElementById('combinationsDisplay');
-    const drawHistoryDisplay = document.getElementById('drawHistory');
-    const probabilityDisplay = document.getElementById('probabilityDisplay');
+        // 选号生成组合
+        function generateCombinations() {
+            const combinations = [];
+            // 获取最新五期开奖数据
+            const latestFiveDraws = lotteryData.slice(0, 1);
+            for (let item of latestFiveDraws) {
+                const numbers = item.preDrawCode.split(',').map(Number);
 
-    combinationsDisplay.innerHTML = `
-        <h2>号码组合</h2>
-        ${combinations.map(group => `
-            <p>${group.name}: ${group.numbers.join(', ')}</p>
-        `).join('')}
-    `;
+                // 根据最新开奖号的号码作为序号，从概率排序列表中选取对应位置的号码
+                let combination = numbers.map(num => {
+                    let index = num - 1;
+                    if (index < 0 || index >= sortedNumbers.length) return null;
+                    return sortedNumbers[index].num;
+                }).filter(num => num !== null);
 
-    drawHistoryDisplay.innerHTML = `
-        <h2>最近开奖历史</h2>
-        ${drawHistory.map(draw => `
-            <p>期号: ${draw.preDrawIssue}, 时间: ${draw.preDrawTime}, 号码: ${draw.preDrawCode}</p>
-        `).join('')}
-    `;
+                combinations.push(combination);
+            }
 
-    probabilityDisplay.innerHTML = `
-        <h2>号码概率排序</h2>
-        ${probabilities.map((item, index) => `
-            <p>${index + 1}. 号码: ${item.number}, 概率: ${item.probability.toFixed(2)}</p>
-        `).join('')}
-    `;
-}
+            // 显示组合结果
+            const combinationsDisplay = combinations.map((combination, index) => `
+                <p>第${index + 1}组: ${combination.join(', ')}</p>
+            `).join('');
 
-async function init() {
-    const data = await fetchData();
-    if (data.length === 0) return;
+            document.getElementById('combinationsDisplay').innerHTML = `
+                <h3>五组号码组合：</h3>${combinationsDisplay}
+            `;
+        }
 
-    const probabilities = calculateProbabilities(data);
-    const latestDrawNumbers = data[0].preDrawCode.split(',').map(Number);
-    const combinations = generateCombinations(probabilities, latestDrawNumbers);
-
-    displayResults(combinations, data.slice(0, 10), probabilities);
-}
-
-init();
-</script>
+        // 自动执行
+        fetchLotteryInfo();
+    </script>
 </body>
 </html>
