@@ -51,9 +51,11 @@
     <div id="resultDisplay"></div>
 
     <script>
-        let frontAreaFrequency = Array.from({ length: 35 }, () => ({ count: 0, totalInterval: 0, lastIndex: -1, averageMiss: 0, probability: 0 }));
-        let backAreaFrequency = Array.from({ length: 12 }, () => ({ count: 0, totalInterval: 0, lastIndex: -1, averageMiss: 0, probability: 0 }));
+        let frontAreaFrequency = Array.from({ length: 35 }, () => ({ count: 0, totalInterval: 0, averageMiss: 0, probability: 0 }));
+        let backAreaFrequency = Array.from({ length: 12 }, () => ({ count: 0, totalInterval: 0, averageMiss: 0, probability: 0 }));
         let lotteryData = [];
+        let frontAreaSorted = [];
+        let backAreaSorted = [];
 
         // 格式化开奖号码，将前区和后区分开
         function formatLotteryResult(result) {
@@ -95,66 +97,110 @@
         // 计算统计数据
         function calculateStatistics(numbersArray, frequencyArray, maxNumber) {
             const totalDraws = numbersArray.length;
-            let occurrenceTimes = Array(maxNumber).fill(0);
-            let intervalPeriods = Array(maxNumber).fill(0);
-            let lastAppearanceIndex = Array(maxNumber).fill(-1);
 
-            // 将数据按时间顺序排列
+            // 初始化数据结构
+            let occurrenceTimes = {};       // 出现次数
+            let intervalPeriods = {};       // 间隔期数
+            let lastAppearanceIndex = {};   // 最后出现索引
+
+            // 将数据按时间顺序排列（最早的在前）
             numbersArray = numbersArray.slice().reverse();
 
-            numbersArray.forEach((numbers, drawIndex) => {
-                numbers.forEach(number => {
-                    const index = number - 1;
-                    occurrenceTimes[index]++;
-                    if (lastAppearanceIndex[index] !== -1) {
-                        intervalPeriods[index] += (drawIndex - lastAppearanceIndex[index]);
+            // 遍历每期数据
+            for (let i = 0; i < totalDraws; i++) {
+                let drawNumbers = numbersArray[i];
+                for (let num of drawNumbers) {
+                    // 更新出现次数
+                    if (occurrenceTimes[num]) {
+                        occurrenceTimes[num] += 1;
+                    } else {
+                        occurrenceTimes[num] = 1;
                     }
-                    lastAppearanceIndex[index] = drawIndex;
-                });
-            });
 
-            let averageMisses = occurrenceTimes.map(count => totalDraws / (count + 1));
+                    // 计算间隔期数
+                    if (lastAppearanceIndex[num] !== undefined) {
+                        let interval = i - lastAppearanceIndex[num] - 1;
+                        if (intervalPeriods[num]) {
+                            intervalPeriods[num] += interval;
+                        } else {
+                            intervalPeriods[num] = interval;
+                        }
+                    } else {
+                        intervalPeriods[num] = 0; // 首次出现，间隔为0
+                    }
 
-            frequencyArray.forEach((item, index) => {
-                item.count = occurrenceTimes[index];
-                item.totalInterval = intervalPeriods[index];
-                item.averageMiss = averageMisses[index];
-                item.probability = (item.count + item.totalInterval + item.averageMiss) / 3;
-            });
+                    // 更新最后出现索引
+                    lastAppearanceIndex[num] = i;
+                }
+            }
+
+            // 计算平均遗漏和号码概率
+            for (let num = 1; num <= maxNumber; num++) {
+                let count = occurrenceTimes[num] || 0;
+                let totalInterval = intervalPeriods[num] || 0;
+                let avgMiss = totalDraws / (count + 1);
+
+                // 计算号码概率
+                let probability = (count + totalInterval + avgMiss) / 3;
+
+                // 更新频率数组
+                frequencyArray[num - 1] = {
+                    count: count,
+                    totalInterval: totalInterval,
+                    averageMiss: avgMiss,
+                    probability: probability
+                };
+            }
         }
 
         // 显示统计结果
         function displayFrequencyResults() {
-            const frontAreaSorted = frontAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
+            frontAreaSorted = frontAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
                 .sort((a, b) => b.probability - a.probability);
-            const backAreaSorted = backAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
+            backAreaSorted = backAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
                 .sort((a, b) => b.probability - a.probability);
 
-            const frontAreaDisplay = frontAreaSorted.map((item, index) => `第${index + 1}位: ${item.num} (${item.probability.toFixed(2)})`).join('<br>');
-            const backAreaDisplay = backAreaSorted.map((item, index) => `第${index + 1}位: ${item.num} (${item.probability.toFixed(2)})`).join('<br>');
+            const frontAreaDisplay = frontAreaSorted.map((item, index) => `第${index + 1}位: ${item.num}`).join('<br>');
+            const backAreaDisplay = backAreaSorted.map((item, index) => `第${index + 1}位: ${item.num}`).join('<br>');
 
             document.getElementById('resultDisplay').innerHTML = `
-                <h3>前区号码概率</h3>
+                <h3>前区号码概率排名</h3>
                 <p>${frontAreaDisplay}</p>
-                <h3>后区号码概率</h3>
+                <h3>后区号码概率排名</h3>
                 <p>${backAreaDisplay}</p>
             `;
         }
 
-        // 生成组合
+        // 选号生成组合
         function generateCombinations() {
-            const frontAreaSorted = frontAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
-                .sort((a, b) => b.probability - a.probability);
-            const backAreaSorted = backAreaFrequency.map((item, index) => ({ num: index + 1, ...item }))
-                .sort((a, b) => b.probability - a.probability);
-
             const combinations = [];
-            for (let i = 0; i < 5; i++) {
-                const frontNumbers = frontAreaSorted.slice(i * 5, i * 5 + 5).map(item => item.num);
-                const backNumbers = backAreaSorted.slice(i * 2, i * 2 + 2).map(item => item.num);
-                combinations.push({ frontNumbers, backNumbers });
+            // 获取最新五期开奖数据
+            const latestFiveDraws = lotteryData.slice(0, 5);
+            for (let item of latestFiveDraws) {
+                const numbers = item.lotteryDrawResult.split(' ');
+                const frontNumbers = numbers.slice(0, 5).map(Number);
+                const backNumbers = numbers.slice(5).map(Number);
+
+                // 根据最新开奖号的号码作为序号，从概率排序列表中选取对应位置的号码
+                let frontCombination = frontNumbers.map(num => {
+                    let index = num - 1;
+                    if (index < 0 || index >= frontAreaSorted.length) return null;
+                    return frontAreaSorted[index].num;
+                }).filter(num => num !== null);
+
+                let backCombination = backNumbers.map(num => {
+                    let index = num - 1;
+                    if (index < 0 || index >= backAreaSorted.length) return null;
+                    return backAreaSorted[index].num;
+                }).filter(num => num !== null);
+
+                combinations.push({
+                    frontNumbers: frontCombination,
+                    backNumbers: backCombination
+                });
             }
 
+            // 显示组合结果
             const combinationsDisplay = combinations.map((combination, index) => `
                 <p>第${index + 1}组: 前区号码 ${combination.frontNumbers.join(', ')}, 后区号码 ${combination.backNumbers.join(', ')}</p>
             `).join('');
