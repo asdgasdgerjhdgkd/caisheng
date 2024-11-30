@@ -140,7 +140,7 @@ function calculateStats(lotteryData, type, maxNumber) {
 
 function generateCombinations(lotteryData, redStats, blueStats) {
     // 获取最近五期的开奖结果
-    const latestDraws = lotteryData.slice(0, 5);
+    const latestDraws = lotteryData.slice(0, 1);
 
     const combinations = latestDraws.map(draw => {
         // 红区号码，根据最新开奖结果的号码序号从红区概率列表中取对应位置的号码
