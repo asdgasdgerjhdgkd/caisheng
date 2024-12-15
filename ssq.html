@@ -127,7 +127,7 @@ function calculateProbability(stat, type) {
     const oddEvenValue = (stat.number % 2 === 0 ? 2 : 1);
     const primeCompositeValue = isPrime(stat.number) ? 1 : 2;
 
-    return (stat.occurrences + stat.averageMiss + sizeValue + oddEvenValue + primeCompositeValue);
+    return (stat.occurrences + stat.averageMiss + sizeValue + oddEvenValue + primeCompositeValue) / 5;
 }
 
 function isPrime(num) {
