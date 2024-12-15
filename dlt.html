@@ -51,8 +51,8 @@
     <div id="resultDisplay"></div>
 
     <script>
-        let frontAreaFrequency = Array.from({ length: 35 }, () => ({ count: 0, totalInterval: 0, averageMiss: 0, probability: 0 }));
-        let backAreaFrequency = Array.from({ length: 12 }, () => ({ count: 0, totalInterval: 0, averageMiss: 0, probability: 0 }));
+        let frontAreaFrequency = Array.from({ length: 35 }, () => ({ count: 0, averageMiss: 0, probability: 0 }));
+        let backAreaFrequency = Array.from({ length: 12 }, () => ({ count: 0, averageMiss: 0, probability: 0 }));
         let lotteryData = [];
         let frontAreaSorted = [];
         let backAreaSorted = [];
@@ -100,7 +100,6 @@
 
             // 初始化数据结构
             let occurrenceTimes = {};       // 出现次数
-            let intervalPeriods = {};       // 间隔期数
             let lastAppearanceIndex = {};   // 最后出现索引
 
             // 将数据按时间顺序排列（最早的在前）
@@ -117,18 +116,6 @@
                         occurrenceTimes[num] = 1;
                     }
 
-                    // 计算间隔期数
-                    if (lastAppearanceIndex[num] !== undefined) {
-                        let interval = i - lastAppearanceIndex[num] - 1;
-                        if (intervalPeriods[num]) {
-                            intervalPeriods[num] += interval;
-                        } else {
-                            intervalPeriods[num] = interval;
-                        }
-                    } else {
-                        intervalPeriods[num] = 0; // 首次出现，间隔为0
-                    }
-
                     // 更新最后出现索引
                     lastAppearanceIndex[num] = i;
                 }
@@ -137,20 +124,43 @@
             // 计算平均遗漏和号码概率
             for (let num = 1; num <= maxNumber; num++) {
                 let count = occurrenceTimes[num] || 0;
-                let totalInterval = intervalPeriods[num] || 0;
                 let avgMiss = totalDraws / (count + 1);
 
+                // 计算分类值
+                let sizeValue = calculateSizeValue(num, maxNumber);
+                let oddEvenValue = calculateOddEvenValue(num);
+                let primeCompositeValue = calculatePrimeCompositeValue(num);
+
                 // 计算号码概率
-                let probability = (count + totalInterval + avgMiss) / 3;
+                let probability = (count + avgMiss + sizeValue + oddEvenValue + primeCompositeValue) / 5;
 
                 // 更新频率数组
                 frequencyArray[num - 1] = {
                     count: count,
-                    totalInterval: totalInterval,
                     averageMiss: avgMiss,
                     probability: probability
                 };
             }
+        }
+
+        // 计算大小值
+        function calculateSizeValue(num, maxNumber) {
+            if (maxNumber === 35) {
+                return num <= 17 ? 1 : 2;  // 前区
+            } else {
+                return num <= 6 ? 1 : 2;   // 后区
+            }
+        }
+
+        // 计算单双值
+        function calculateOddEvenValue(num) {
+            return num % 2 === 0 ? 2 : 1;
+        }
+
+        // 计算质合值
+        function calculatePrimeCompositeValue(num) {
+            const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
+            return primes.includes(num) ? 1 : 2;
         }
 
         // 显示统计结果
