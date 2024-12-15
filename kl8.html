@@ -51,7 +51,7 @@
     <div id="resultDisplay"></div>
 
     <script>
-        let numberFrequency = Array.from({ length: 80 }, () => ({ count: 0, totalInterval: 0, averageMiss: 0, probability: 0 }));
+        let numberFrequency = Array.from({ length: 80 }, () => ({ count: 0, averageMiss: 0, probability: 0 }));
         let lotteryData = [];
         let sortedNumbers = [];
 
@@ -94,11 +94,17 @@
 
             // 初始化数据结构
             let occurrenceTimes = {};       // 出现次数
-            let intervalPeriods = {};       // 间隔期数
-            let lastAppearanceIndex = {};   // 最后出现索引
 
             // 将数据按时间顺序排列（最早的在前）
             numbersArray = numbersArray.slice().reverse();
+
+            // 大小、单双、质合分类
+            const smallNumbers = new Set(Array.from({ length: 40 }, (_, i) => i + 1));
+            const bigNumbers = new Set(Array.from({ length: 40 }, (_, i) => i + 41));
+            const oddNumbers = new Set(Array.from({ length: 40 }, (_, i) => 2 * i + 1));
+            const evenNumbers = new Set(Array.from({ length: 40 }, (_, i) => 2 * (i + 1)));
+            const primeNumbers = new Set([2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79]);
+            const compositeNumbers = new Set(Array.from({ length: 80 }, (_, i) => i + 1).filter(x => !primeNumbers.has(x)));
 
             // 遍历每期数据
             for (let i = 0; i < totalDraws; i++) {
@@ -110,37 +116,25 @@
                     } else {
                         occurrenceTimes[num] = 1;
                     }
-
-                    // 计算间隔期数
-                    if (lastAppearanceIndex[num] !== undefined) {
-                        let interval = i - lastAppearanceIndex[num] - 1;
-                        if (intervalPeriods[num]) {
-                            intervalPeriods[num] += interval;
-                        } else {
-                            intervalPeriods[num] = interval;
-                        }
-                    } else {
-                        intervalPeriods[num] = 0; // 首次出现，间隔为0
-                    }
-
-                    // 更新最后出现索引
-                    lastAppearanceIndex[num] = i;
                 }
             }
 
             // 计算平均遗漏和号码概率
             for (let num = 1; num <= maxNumber; num++) {
                 let count = occurrenceTimes[num] || 0;
-                let totalInterval = intervalPeriods[num] || 0;
                 let avgMiss = totalDraws / (count + 1);
 
+                // 计算大小、单双、质合的值
+                let sizeValue = smallNumbers.has(num) ? 1 : 0;
+                let parityValue = oddNumbers.has(num) ? 1 : 0;
+                let primeCompositeValue = primeNumbers.has(num) ? 1 : 0;
+
                 // 计算号码概率
-                let probability = (count + totalInterval + avgMiss) / 3;
+                let probability = (count + avgMiss + sizeValue + parityValue + primeCompositeValue) / 5;
 
                 // 更新频率数组
                 frequencyArray[num - 1] = {
                     count: count,
-                    totalInterval: totalInterval,
                     averageMiss: avgMiss,
                     probability: probability
                 };
@@ -163,20 +157,21 @@
         // 选号生成组合
         function generateCombinations() {
             const combinations = [];
-            // 获取最新五期开奖数据
-            const latestFiveDraws = lotteryData.slice(0, 1);
-            for (let item of latestFiveDraws) {
-                const numbers = item.preDrawCode.split(',').map(Number);
+            // 获取最新一期开奖数据
+            const latestDraw = lotteryData[0];
+            const numbers = latestDraw.preDrawCode.split(',').map(Number);
 
-                // 根据最新开奖号的号码作为序号，从概率排序列表中选取对应位置的号码
-                let combination = numbers.map(num => {
-                    let index = num - 1;
-                    if (index < 0 || index >= sortedNumbers.length) return null;
-                    return sortedNumbers[index].num;
-                }).filter(num => num !== null);
+            // 根据最新开奖号的20位号码作为序号，从概率排序列表中选取概率值最大的10位对应位置的号码
+            const selectedNumbers = numbers.map(num => {
+                let index = num - 1;
+                if (index < 0 || index >= sortedNumbers.length) return null;
+                return sortedNumbers[index];
+            }).filter(num => num !== null);
 
-                combinations.push(combination);
-            }
+            // 按概率排序并选取前10个号码
+            const topCombinations = selectedNumbers.sort((a, b) => b.probability - a.probability).slice(0, 10).map(item => item.num);
+
+            combinations.push(topCombinations);
 
             // 显示组合结果
             const combinationsDisplay = combinations.map((combination, index) => `
@@ -184,7 +179,7 @@
             `).join('');
 
             document.getElementById('combinationsDisplay').innerHTML = `
-                <h3>五组号码组合：</h3>${combinationsDisplay}
+                <h3>组合号码：</h3>${combinationsDisplay}
             `;
         }
 
