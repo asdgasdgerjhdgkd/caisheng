@@ -90,21 +90,17 @@ function processLotteryData(data) {
 }
 
 function calculateStats(lotteryData, type, maxNumber) {
-    // 只处理最近的100期数据
     const data = lotteryData.slice(0, 100).reverse();
     const totalPeriods = data.length;
 
-    // 初始化统计数据
     const stats = Array.from({ length: maxNumber }, (_, i) => ({
         number: i + 1,
         occurrences: 0,
-        totalIntervals: 0,
-        lastAppearIndex: null,
         averageMiss: 0,
         probability: 0
     }));
 
-    data.forEach((draw, index) => {
+    data.forEach((draw) => {
         let numbers;
         if (type === 'red') {
             numbers = draw.red;
@@ -114,46 +110,45 @@ function calculateStats(lotteryData, type, maxNumber) {
 
         numbers.forEach(num => {
             const stat = stats[num - 1];
-
-            // 出现次数
             stat.occurrences += 1;
-
-            // 间隔期数
-            if (stat.lastAppearIndex !== null) {
-                const interval = index - stat.lastAppearIndex;
-                stat.totalIntervals += interval;
-            }
-            // 更新最后出现索引
-            stat.lastAppearIndex = index;
         });
     });
 
-    // 计算平均遗漏和号码概率
     stats.forEach(stat => {
         stat.averageMiss = totalPeriods / (stat.occurrences + 1);
-        stat.probability = (stat.occurrences + stat.totalIntervals + stat.averageMiss) / 3;
+        stat.probability = calculateProbability(stat, type);
     });
 
-    // 按照号码概率从高到低排序
     return stats.sort((a, b) => b.probability - a.probability);
 }
 
+function calculateProbability(stat, type) {
+    const sizeValue = (type === 'red' ? (stat.number <= 16 ? 1 : 2) : (stat.number <= 8 ? 1 : 2));
+    const oddEvenValue = (stat.number % 2 === 0 ? 2 : 1);
+    const primeCompositeValue = isPrime(stat.number) ? 1 : 2;
+
+    return (stat.occurrences + stat.averageMiss + sizeValue + oddEvenValue + primeCompositeValue) / 5;
+}
+
+function isPrime(num) {
+    if (num <= 1) return false;
+    if (num <= 3) return true;
+    if (num % 2 === 0 || num % 3 === 0) return false;
+    for (let i = 5; i * i <= num; i += 6) {
+        if (num % i === 0 || num % (i + 2) === 0) return false;
+    }
+    return true;
+}
+
 function generateCombinations(lotteryData, redStats, blueStats) {
-    // 获取最近五期的开奖结果
     const latestDraws = lotteryData.slice(0, 1);
 
     const combinations = latestDraws.map(draw => {
-        // 红区号码，根据最新开奖结果的号码序号从红区概率列表中取对应位置的号码
         const redNumbers = draw.red.map(num => {
-            const index = num - 1; // 序号从0开始
-            if (redStats[index]) {
-                return redStats[index].number;
-            } else {
-                return num;
-            }
+            const index = num - 1;
+            return redStats[index] ? redStats[index].number : num;
         });
 
-        // 蓝区号码
         const blueIndex = draw.blue - 1;
         const blueNumber = blueStats[blueIndex] ? blueStats[blueIndex].number : draw.blue;
 
