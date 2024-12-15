@@ -65,7 +65,7 @@
 
 <script>
 // 老澳门代码
-const numberToAnimalOld = {
+const numberToAnimal = {
     '01': '龍', '02': '兔', '03': '虎', '04': '牛', '05': '鼠', '06': '豬',
     '07': '狗', '08': '雞', '09': '猴', '10': '羊', '11': '馬', '12': '蛇',
     '13': '龍', '14': '兔', '15': '虎', '16': '牛', '17': '鼠', '18': '豬',
@@ -77,27 +77,19 @@ const numberToAnimalOld = {
     '49': '龍'
 };
 
-let latestDataOld = null;
-let numberFrequencyOld = {};
-let numberProbabilityOld = {};
+// 分类定义
+const smallNumbers = new Set(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24']);
+const largeNumbers = new Set(['25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49']);
+const oddNumbers = new Set(['01', '03', '05', '07', '09', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '31', '33', '35', '37', '39', '41', '43', '45', '47', '49']);
+const evenNumbers = new Set(['02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48']);
+const primeNumbers = new Set(['02', '03', '05', '07', '11', '13', '17', '19', '23', '29', '31', '37', '41', '43', '47']);
+const compositeNumbers = new Set(['01', '04', '06', '08', '09', '10', '12', '14', '15', '16', '18', '20', '21', '22', '24', '25', '26', '27', '28', '30', '32', '33', '34', '35', '36', '38', '39', '40', '42', '44', '45', '46', '48', '49']);
 
-// 分类
-const sizeCategories = {
-    small: new Set(Array.from({length: 24}, (_, i) => (i + 1).toString().padStart(2, '0'))),
-    large: new Set(Array.from({length: 25}, (_, i) => (i + 25).toString().padStart(2, '0')))
-};
+let latestData = null;
+let numberFrequency = {};
+let numberProbability = {};
 
-const oddEvenCategories = {
-    odd: new Set(['01', '03', '05', '07', '09', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '31', '33', '35', '37', '39', '41', '43', '45', '47', '49']),
-    even: new Set(['02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'])
-};
-
-const primeCompositeCategories = {
-    prime: new Set(['02', '03', '05', '07', '11', '13', '17', '19', '23', '29', '31', '37', '41', '43', '47']),
-    composite: new Set(['01', '04', '06', '08', '09', '10', '12', '14', '15', '16', '18', '20', '21', '22', '24', '25', '26', '27', '28', '30', '32', '33', '34', '35', '36', '38', '39', '40', '42', '44', '45', '46', '48', '49'])
-};
-
-function fetchDataAndDisplayOld() {
+function fetchDataAndDisplay() {
     fetch('https://his4.szyasidz.com/api/HistoryOpenInfo/2032/11')
         .then(response => {
             if (!response.ok) {
@@ -107,20 +99,21 @@ function fetchDataAndDisplayOld() {
         })
         .then(data => {
             if(data.code === 0 && data.data && data.data.length > 0) {
-                const filteredData = data.data.slice(0, 100); // 获取最近期100数据
+                const filteredData = data.data.slice(0, 100); // 获取最近100期数据
                 const totalIssues = filteredData.length; // 统计期数
 
+
                 // 只显示最新一期的数据
-                latestDataOld = filteredData[filteredData.length - 1]; // 最新一期的数据
-                const openCodeArr = latestDataOld.openCode.split(","); // 将开奖号码以逗号分隔成数组
+                latestData = filteredData[filteredData.length - 1]; // 最新一期的数据
+                const openCodeArr = latestData.openCode.split(","); // 将开奖号码以逗号分隔成数组
                 const pingma = openCodeArr.slice(0, 6); // 平码为前六位
                 const tema = openCodeArr[6]; // 特码为第七位
 
-                const pingmaAnimals = pingma.map(num => numberToAnimalOld[num.padStart(2, '0')]).join(','); // 平码的生肖
-                const temaAnimal = numberToAnimalOld[tema.padStart(2, '0')]; // 特码的生肖
+                const pingmaAnimals = pingma.map(num => numberToAnimal[num.padStart(2, '0')]).join(','); // 平码的生肖
+                const temaAnimal = numberToAnimal[tema.padStart(2, '0')]; // 特码的生肖
                 const htmlContent = 
                     `<div class="data-item">
-                        <p>期号: ${latestDataOld.issue}</p>
+                        <p>期号: ${latestData.issue}</p>
                         <p>平码: ${pingma.join(",")} </p>
                         <p>生肖：${pingmaAnimals} </p>
                         <p>特码: ${tema} </p>
@@ -136,32 +129,36 @@ function fetchDataAndDisplayOld() {
                     const allNumbers = [...openCodeArr.slice(0, 6), openCodeArr[6]];
                     allNumbers.forEach(num => {
                         // 更新出现次数
-                        if (!numberFrequencyOld[num]) {
-                            numberFrequencyOld[num] = 1;
+                        if (!numberFrequency[num]) {
+                            numberFrequency[num] = 1;
                         } else {
-                            numberFrequencyOld[num]++;
+                            numberFrequency[num]++;
                         }
                     });
                 });
 
-                // 计算号码概率
-                Object.keys(numberFrequencyOld).forEach(num => {
-                    const occurrences = numberFrequencyOld[num];
+                // 计算平均遗漏和号码概率
+                Object.keys(numberFrequency).forEach(num => {
+                    const occurrences = numberFrequency[num];
 
                     // 平均遗漏 = 统计期数 / (出现次数 + 1)
                     const averageMiss = totalIssues / (occurrences + 1);
 
-                    // 分类值
-                    const sizeValue = sizeCategories.small.has(num) ? 1 : 0;
-                    const oddEvenValue = oddEvenCategories.odd.has(num) ? 1 : 0;
-                    const primeCompositeValue = primeCompositeCategories.prime.has(num) ? 1 : 0;
+                    // 大小分类
+                    const sizeValue = smallNumbers.has(num) ? 1 : 2;
 
-                    // 号码概率 = {(出现次数) + (平均遗漏) + (大小值) + (单双值) + (质合值)} / 5
-                    numberProbabilityOld[num] = ((occurrences) + (averageMiss) + (sizeValue) + (oddEvenValue) + (primeCompositeValue)) / 5;
+                    // 单双分类
+                    const parityValue = oddNumbers.has(num) ? 1 : 2;
+
+                    // 质合分类
+                    const qualityValue = primeNumbers.has(num) ? 1 : 2;
+
+                    // 号码概率 = (出现次数 + 平均遗漏 + 大小值 + 单双值 + 质合值) / 5
+                    numberProbability[num] = (occurrences + averageMiss + sizeValue + parityValue + qualityValue) / 5;
                 });
 
                 // 排序号码概率
-                const sortedNumbers = Object.entries(numberProbabilityOld).sort((a, b) => b[1] - a[1]);
+                const sortedNumbers = Object.entries(numberProbability).sort((a, b) => b[1] - a[1]);
 
                 // 显示统计结果
                 let statsContent = '<h3>号码概率</h3>';
@@ -218,7 +215,7 @@ function generateFortuneOld(sortedNumbers) {
 }
 
 // 新澳门代码
-const numberToAnimalNew = {
+const numberToAnimal = {
     '01': '龍', '02': '兔', '03': '虎', '04': '牛', '05': '鼠', '06': '豬',
     '07': '狗', '08': '雞', '09': '猴', '10': '羊', '11': '馬', '12': '蛇',
     '13': '龍', '14': '兔', '15': '虎', '16': '牛', '17': '鼠', '18': '豬',
@@ -230,11 +227,23 @@ const numberToAnimalNew = {
     '49': '龍'
 };
 
-let latestDataNew = null;
-let numberFrequencyNew = {}; // 出现次数
-let numberProbabilityNew = {}; // 号码概率
+// 大小分类
+const smallNumbers = new Set(['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24']);
+const largeNumbers = new Set(['25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49']);
 
-function fetchDataAndDisplayNew() {
+// 单双分类
+const oddNumbers = new Set(['01', '03', '05', '07', '09', '11', '13', '15', '17', '19', '21', '23', '25', '27', '29', '31', '33', '35', '37', '39', '41', '43', '45', '47', '49']);
+const evenNumbers = new Set(['02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48']);
+
+// 质合分类
+const primeNumbers = new Set(['02', '03', '05', '07', '11', '13', '17', '19', '23', '29', '31', '37', '41', '43', '47']);
+const compositeNumbers = new Set(['01', '04', '06', '08', '09', '10', '12', '14', '15', '16', '18', '20', '21', '22', '24', '25', '26', '27', '28', '30', '32', '33', '34', '35', '36', '38', '39', '40', '42', '44', '45', '46', '48', '49']);
+
+let latestData = null;
+let numberFrequency = {}; // 出现次数
+let numberProbability = {}; // 号码概率
+
+function fetchDataAndDisplay() {
     fetch('https://api.macaumarksix.com/history/macaujc2/y/2024')
         .then(response => {
             if (!response.ok) {
@@ -245,21 +254,20 @@ function fetchDataAndDisplayNew() {
         .then(data => {
             if(data.result && data.data && data.data.length > 0) {
                 const filteredData = data.data.slice(0, 100); // 获取最近100期数据
-                filteredData.reverse(); // 将数据按时间顺序排列
 
                 // 保存最新一期的数据
-                latestDataNew = filteredData[filteredData.length - 1];
+                latestData = filteredData[filteredData.length - 1];
 
                 // 只显示最新一期的数据
-                const latestOpenCodeArr = latestDataNew.openCode.split(",");
+                const latestOpenCodeArr = latestData.openCode.split(",");
                 const latestPingma = latestOpenCodeArr.slice(0, 6);
                 const latestTema = latestOpenCodeArr[6];
-                const latestPingmaAnimals = latestPingma.map(num => numberToAnimalNew[num.padStart(2, '0')]).join(',');
-                const latestTemaAnimal = numberToAnimalNew[latestTema.padStart(2, '0')];
+                const latestPingmaAnimals = latestPingma.map(num => numberToAnimal[num.padStart(2, '0')]).join(',');
+                const latestTemaAnimal = numberToAnimal[latestTema.padStart(2, '0')];
                 
                 let htmlContent = `
                     <div class="data-item">
-                        <p>期号: ${latestDataNew.expect}</p>
+                        <p>期号: ${latestData.expect}</p>
                         <p>平码: ${latestPingma.join(",")} </p>
                         <p>生肖：${latestPingmaAnimals} </p>
                         <p>特码: ${latestTema} </p>
@@ -268,37 +276,39 @@ function fetchDataAndDisplayNew() {
                     </div>`;
 
                 // 统计号码出现次数
-                filteredData.forEach((item, index) => {
+                filteredData.forEach(item => {
                     const openCodeArr = item.openCode.split(","); // 将开奖号码以逗号分隔成数组
                     const pingma = openCodeArr.slice(0, 6); // 平码为前六位
                     const tema = openCodeArr[6]; // 特码为第七位
 
                     const allNumbers = [...pingma, tema];
                     allNumbers.forEach(num => {
-                        if (numberFrequencyNew[num] === undefined) {
-                            numberFrequencyNew[num] = 0; // 出现次数
+                        if (numberFrequency[num] === undefined) {
+                            numberFrequency[num] = 0; // 出现次数
                         }
                         // 更新出现次数
-                        numberFrequencyNew[num]++;
+                        numberFrequency[num]++;
                     });
                 });
 
                 // 计算号码概率
-                Object.keys(numberFrequencyNew).forEach(num => {
-                    const occurrences = numberFrequencyNew[num]; // 出现次数
+                Object.keys(numberFrequency).forEach(num => {
+                    const occurrences = numberFrequency[num]; // 出现次数
                     const averageMiss = filteredData.length / (occurrences + 1); // 平均遗漏
 
-                    // 分类值
-                    const sizeValue = sizeCategories.small.has(num) ? 1 : 0;
-                    const oddEvenValue = oddEvenCategories.odd.has(num) ? 1 : 0;
-                    const primeCompositeValue = primeCompositeCategories.prime.has(num) ? 1 : 0;
+                    // 大小值
+                    const sizeValue = smallNumbers.has(num) ? 1 : largeNumbers.has(num) ? 2 : 0;
+                    // 单双值
+                    const parityValue = oddNumbers.has(num) ? 1 : evenNumbers.has(num) ? 2 : 0;
+                    // 质合值
+                    const primeCompositeValue = primeNumbers.has(num) ? 1 : compositeNumbers.has(num) ? 2 : 0;
 
                     // 号码概率 = （出现次数 + 平均遗漏 + 大小值 + 单双值 + 质合值）/ 5
-                    numberProbabilityNew[num] = (occurrences + averageMiss + sizeValue + oddEvenValue + primeCompositeValue) / 5;
+                    numberProbability[num] = (occurrences + averageMiss + sizeValue + parityValue + primeCompositeValue) / 5;
                 });
 
                 // 按照号码概率降序排序
-                const sortedNumbers = Object.entries(numberProbabilityNew).sort((a, b) => b[1] - a[1]);
+                const sortedNumbers = Object.entries(numberProbability).sort((a, b) => b[1] - a[1]);
 
                 // 显示统计结果
                 let statsContent = '<h3>号码概率</h3>';
