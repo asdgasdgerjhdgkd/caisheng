@@ -104,7 +104,7 @@ function fetchDataAndDisplay() {
 
 
                 // 只显示最新一期的数据
-                latestData = filteredData[filteredData.length - 1]; // 最新一期的数据
+                latestData = filteredData[filteredData.length - 100]; // 最新一期的数据
                 const openCodeArr = latestData.openCode.split(","); // 将开奖号码以逗号分隔成数组
                 const pingma = openCodeArr.slice(0, 6); // 平码为前六位
                 const tema = openCodeArr[6]; // 特码为第七位
@@ -256,7 +256,7 @@ function fetchDataAndDisplay() {
                 const filteredData = data.data.slice(0, 100); // 获取最近100期数据
 
                 // 保存最新一期的数据
-                latestData = filteredData[filteredData.length - 1];
+                latestData = filteredData[filteredData.length - 100];
 
                 // 只显示最新一期的数据
                 const latestOpenCodeArr = latestData.openCode.split(",");
