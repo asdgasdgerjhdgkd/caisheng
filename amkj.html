@@ -111,7 +111,7 @@
                     if (data.code === 0) {
                         const tableBody = document.getElementById('oldMacauTable').querySelector('tbody');
                         tableBody.innerHTML = ''; // Clear existing data
-                        data.data.slice(0, 100).sort((a, b) => b.issue - a.issue).forEach(item => {
+                        data.data.slice(0, 10).sort((a, b) => b.issue - a.issue).forEach(item => {
                             const numbers = item.openCode.split(',');
                             const animals = numbers.map(num => numberToAnimal[num.padStart(2, '0')]);
                             const openCodeWithAnimal = `
@@ -140,7 +140,7 @@
                     if (data.code === 200) {
                         const tableBody = document.getElementById('newMacauTable').querySelector('tbody');
                         tableBody.innerHTML = ''; // Clear existing data
-                        data.data.slice(0, 100).sort((a, b) => b.expect - a.expect).forEach(item => {
+                        data.data.slice(0, 10).sort((a, b) => b.expect - a.expect).forEach(item => {
                             const numbers = item.openCode.split(',');
                             const animals = item.zodiac.split(',');
                             const openCodeWithAnimal = `
