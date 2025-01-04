@@ -108,7 +108,7 @@ function fetchDataOld() {
                 const totalIssues = filteredData.length; // 统计期数
 
                 // 只显示最新一期的数据
-                latestDataOld = filteredData[filteredData.length - 100]; // 最新一期的数据
+                latestDataOld = filteredData[filteredData.length - 366]; // 最新一期的数据
                 const openCodeArr = latestDataOld.openCode.split(","); // 将开奖号码以逗号分隔成数组
                 const pingma = openCodeArr.slice(0, 6); // 平码为前六位
                 const tema = openCodeArr[6]; // 特码为第七位
