@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -207,79 +208,95 @@ function generateFortuneOld(sortedNumbers) {
 }
 
 function fetchDataNew() {
-    fetch('https://macaujc.org/api/HistoryOpenInfo')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+    let currentYear = 2025;
+    let allData = [];
+
+    function fetchYearData(year) {
+        return fetch(`https://api.macaumarksix.com/history/macaujc2/y/${year}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            });
+    }
+
+    function processData(data) {
+        if(data.code === 200 && data.data && data.data.length > 0) {
+            allData = [...allData, ...data.data];
+            
+            if(allData.length < 366 && currentYear > 2024) {
+                currentYear--;
+                return fetchYearData(currentYear).then(processData);
             }
-            return response.json();
-        })
-        .then(data => {
-            if(data.code === 0 && data.data && data.data.length > 0) {
-                const filteredData = data.data.slice(0, 366); // 获取最近366期数据
 
-                // 保存最新一期的数据
-                latestDataNew = filteredData[0];
+            const filteredData = allData.slice(0, 366); // 获取最近366期数据
 
-                // 只显示最新一期的数据
-                const latestOpenCodeArr = latestDataNew.openCode.split(",").map(num => num ? num.trim() : '');
-                const latestPingma = latestOpenCodeArr.slice(0, 6);
-                const latestTema = latestOpenCodeArr[6];
-                const latestPingmaAnimals = latestPingma.map(num => num ? numberToAnimal[num.padStart(2, '0')] : '').join(',');
-                const latestTemaAnimal = latestTema ? numberToAnimal[latestTema.padStart(2, '0')] : '';
-                
-                let htmlContent = `
-                    <div class="data-item">
-                        <p>期号: ${latestDataNew.issue}</p>
-                        <p>开奖时间: ${latestDataNew.openTime}</p>
-                        <p>平码: ${latestPingma.join(",")} </p>
-                        <p>生肖：${latestPingmaAnimals} </p>
-                        <p>特码: ${latestTema} </p>
-                        <p>生肖：${latestTemaAnimal} </p>
-                        <hr>
-                    </div>`;
+            // 保存最新一期的数据
+            latestDataNew = filteredData[0];
 
-                document.getElementById("dataDisplayNew").innerHTML = htmlContent;
+            // 只显示最新一期的数据
+            const latestOpenCodeArr = latestDataNew.openCode.split(",").map(num => num ? num.trim() : '');
+            const latestPingma = latestOpenCodeArr.slice(0, 6);
+            const latestTema = latestOpenCodeArr[6];
+            const latestPingmaAnimals = latestPingma.map(num => num ? numberToAnimal[num.padStart(2, '0')] : '').join(',');
+            const latestTemaAnimal = latestTema ? numberToAnimal[latestTema.padStart(2, '0')] : '';
+            
+            let htmlContent = `
+                <div class="data-item">
+                    <p>期号: ${latestDataNew.expect}</p>
+                    <p>开奖时间: ${latestDataNew.openTime}</p>
+                    <p>平码: ${latestPingma.join(",")} </p>
+                    <p>生肖：${latestPingmaAnimals} </p>
+                    <p>特码: ${latestTema} </p>
+                    <p>生肖：${latestTemaAnimal} </p>
+                    <hr>
+                </div>`;
 
-                // 重置频率统计
-                numberFrequencyNew = {};
+            document.getElementById("dataDisplayNew").innerHTML = htmlContent;
 
-                // 统计号码出现次数
-                filteredData.forEach(item => {
-                    if (!item || !item.openCode) return;
-                    const openCodeArr = item.openCode.split(",").map(num => num ? num.trim() : '');
-                    const allNumbers = [...openCodeArr.slice(0, 6), openCodeArr[6]];
-                    allNumbers.forEach(num => {
-                        if (!num) return;
-                        const paddedNum = num.padStart(2, '0');
-                        numberFrequencyNew[paddedNum] = (numberFrequencyNew[paddedNum] || 0) + 1;
-                    });
+            // 重置频率统计
+            numberFrequencyNew = {};
+
+            // 统计号码出现次数
+            filteredData.forEach(item => {
+                if (!item || !item.openCode) return;
+                const openCodeArr = item.openCode.split(",").map(num => num ? num.trim() : '');
+                const allNumbers = [...openCodeArr.slice(0, 6), openCodeArr[6]];
+                allNumbers.forEach(num => {
+                    if (!num) return;
+                    const paddedNum = num.padStart(2, '0');
+                    numberFrequencyNew[paddedNum] = (numberFrequencyNew[paddedNum] || 0) + 1;
                 });
+            });
 
-                // 计算号码概率
-                Object.keys(numberFrequencyNew).forEach(num => {
-                    const occurrences = numberFrequencyNew[num];
-                    const averageMiss = filteredData.length / (occurrences + 1);
-                    numberProbabilityNew[num] = occurrences * 0.7 + averageMiss * 0.3;
-                });
+            // 计算号码概率
+            Object.keys(numberFrequencyNew).forEach(num => {
+                const occurrences = numberFrequencyNew[num];
+                const averageMiss = filteredData.length / (occurrences + 1);
+                numberProbabilityNew[num] = occurrences * 0.7 + averageMiss * 0.3;
+            });
 
-                // 按照号码概率降序排序
-                const sortedNumbers = Object.entries(numberProbabilityNew).sort((a, b) => b[1] - a[1]);
+            // 按照号码概率降序排序
+            const sortedNumbers = Object.entries(numberProbabilityNew).sort((a, b) => b[1] - a[1]);
 
-                // 显示统计结果
-                let statsContent = '<h3>号码概率</h3>';
-                sortedNumbers.forEach(([num, prob], index) => {
-                    statsContent += `<p>第${index + 1}位：号码 ${num} 概率值： ${prob.toFixed(2)} </p>`;
-                });
-                document.getElementById("statsDisplayNew").innerHTML = statsContent;
+            // 显示统计结果
+            let statsContent = '<h3>号码概率</h3>';
+            sortedNumbers.forEach(([num, prob], index) => {
+                statsContent += `<p>第${index + 1}位：号码 ${num} 概率值： ${prob.toFixed(2)} </p>`;
+            });
+            document.getElementById("statsDisplayNew").innerHTML = statsContent;
 
-                // 生成推荐结果
-                generateFortuneNew(sortedNumbers);
+            // 生成推荐结果
+            generateFortuneNew(sortedNumbers);
 
-            } else {
-                document.getElementById("dataDisplayNew").innerHTML = "<p>无法获取数据，请检查API或数据格式。</p>";
-            }
-        })
+        } else {
+            document.getElementById("dataDisplayNew").innerHTML = "<p>无法获取数据，请检查API或数据格式。</p>";
+        }
+    }
+
+    fetchYearData(currentYear)
+        .then(processData)
         .catch(error => {
             console.error('There has been a problem with your fetch operation:', error);
             document.getElementById("dataDisplayNew").innerHTML = `<p>请求错误: ${error.message}</p>`;
