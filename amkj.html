@@ -1,344 +1,186 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>澳门六合彩</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>澳门开奖数据</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            justify-content: space-around;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
             background-color: #f4f4f9;
         }
+        .tables-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px 0;
+        }
         table {
-            width: 45%;
             border-collapse: collapse;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            background-color: #fff;
-            border-radius: 8px;
+            width: 48%;
+            margin: 10px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         th, td {
-            padding: 15px;
+            border: 1px solid #ddd;
+            padding: 8px;
             text-align: center;
-            border-bottom: 1px solid #ddd;
         }
         th {
             background-color: #f2f2f2;
         }
-        #resultDisplayOld, #statsDisplayOld, #resultDisplayNew, #statsDisplayNew {
-            margin-top: 20px;
-            font-size: 18px;
-            font-weight: bold;
+        .number-animal {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
         }
-        .hidden {
-            display: none;
+        .numbers, .animals {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
         }
     </style>
 </head>
 <body>
+    <div class="tables-container">
+        <table id="oldMacauTable">
+            <thead>
+                <tr>
+                    <th>期号</th>
+                    <th>老澳门  开奖号码 + 生肖</th>
+                    <th>开奖时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 老澳门数据 -->
+            </tbody>
+        </table>
+        <table id="newMacauTable">
+            <thead>
+                <tr>
+                    <th>期号</th>
+                    <th>新澳门  开奖号码 + 生肖</th>
+                    <th>开奖时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 新澳门数据 -->
+            </tbody>
+        </table>
+    </div>
 
-<table>
-    <thead>
-        <tr>
-            <th colspan="2">老澳门</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td colspan="2">
-                <div id="resultDisplayOld"></div>
-                <div id="dataDisplayOld"></div>
-                <div id="statsDisplayOld" class="hidden"></div>
-            </td>
-        </tr>
-    </tbody>
-</table>
+    <script>
+        const numberToAnimal = {
+            '01': '龍', '02': '兔', '03': '虎', '04': '牛', '05': '鼠', '06': '豬',
+            '07': '狗', '08': '雞', '09': '猴', '10': '羊', '11': '馬', '12': '蛇',
+            '13': '龍', '14': '兔', '15': '虎', '16': '牛', '17': '鼠', '18': '豬',
+            '19': '狗', '20': '雞', '21': '猴', '22': '羊', '23': '馬', '24': '蛇',
+            '25': '龍', '26': '兔', '27': '虎', '28': '牛', '29': '鼠', '30': '豬',
+            '31': '狗', '32': '雞', '33': '猴', '34': '羊', '35': '馬', '36': '蛇',
+            '37': '龍', '38': '兔', '39': '虎', '40': '牛', '41': '鼠', '42': '豬',
+            '43': '狗', '44': '雞', '45': '猴', '46': '羊', '47': '馬', '48': '蛇',
+            '49': '龍'
+        };
 
-<table>
-    <thead>
-        <tr>
-            <th colspan="2">新澳门</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td colspan="2">
-                <div id="resultDisplayNew"></div>
-                <div id="dataDisplayNew"></div>
-                <div id="statsDisplayNew" class="hidden"></div>
-            </td>
-        </tr>
-    </tbody>
-</table>
+        let autoRefreshInterval = null;
 
-<script>
-// 公用的分类定义
-const numberToAnimal = {
-    '01': '龍', '02': '兔', '03': '虎', '04': '牛', '05': '鼠', '06': '豬',
-    '07': '狗', '08': '雞', '09': '猴', '10': '羊', '11': '馬', '12': '蛇',
-    '13': '龍', '14': '兔', '15': '虎', '16': '牛', '17': '鼠', '18': '豬',
-    '19': '狗', '20': '雞', '21': '猴', '22': '羊', '23': '馬', '24': '蛇',
-    '25': '龍', '26': '兔', '27': '虎', '28': '牛', '29': '鼠', '30': '豬',
-    '31': '狗', '32': '雞', '33': '猴', '34': '羊', '35': '馬', '36': '蛇',
-    '37': '龍', '38': '兔', '39': '虎', '40': '牛', '41': '鼠', '42': '豬',
-    '43': '狗', '44': '雞', '45': '猴', '46': '羊', '47': '馬', '48': '蛇',
-    '49': '龍'
-};
+        // Automatically fetch data when the page loads
+        window.onload = fetchData;
 
-let latestDataOld = null;
-let latestDataNew = null;
-let numberFrequencyOld = {};
-let numberFrequencyNew = {};
-let numberProbabilityOld = {};
-let numberProbabilityNew = {};
-
-function fetchDataOld() {
-    fetch('https://his4.szyasidz.com/api/HistoryOpenInfo/2032/11')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if(data.code === 0 && data.data && data.data.length > 0) {
-                const filteredData = data.data.slice(0, 366); // 获取最近366期数据
-                const totalIssues = filteredData.length; // 统计期数
-
-                // 只显示最新一期的数据
-                latestDataOld = filteredData[filteredData.length - 366]; // 最新一期的数据
-                const openCodeArr = latestDataOld.openCode.split(","); // 将开奖号码以逗号分隔成数组
-                const pingma = openCodeArr.slice(0, 6); // 平码为前六位
-                const tema = openCodeArr[6]; // 特码为第七位
-
-                const pingmaAnimals = pingma.map(num => numberToAnimal[num.padStart(2, '0')]).join(','); // 平码的生肖
-                const temaAnimal = numberToAnimal[tema.padStart(2, '0')]; // 特码的生肖
-                const htmlContent = 
-                    `<div class="data-item">
-                        <p>期号: ${latestDataOld.issue}</p>
-                        <p>开奖时间: ${latestDataOld.openTime}</p>
-                        <p>平码: ${pingma.join(",")} </p>
-                        <p>生肖：${pingmaAnimals} </p>
-                        <p>特码: ${tema} </p>
-                        <p>生肖：${temaAnimal} </p>
-                        <hr>
-                    </div>`;
-
-                document.getElementById("dataDisplayOld").innerHTML = htmlContent;
-
-                // 统计号码出现次数
-                filteredData.forEach((item) => {
-                    const openCodeArr = item.openCode.split(",");
-                    const allNumbers = [...openCodeArr.slice(0, 6), openCodeArr[6]];
-                    allNumbers.forEach(num => {
-                        // 更新出现次数
-                        if (!numberFrequencyOld[num]) {
-                            numberFrequencyOld[num] = 1;
-                        } else {
-                            numberFrequencyOld[num]++;
-                        }
-                    });
-                });
-
-                // 计算平均遗漏和号码概率
-                Object.keys(numberFrequencyOld).forEach(num => {
-                    const occurrences = numberFrequencyOld[num];
-                    // 平均遗漏 = 统计期数 / (出现次数 + 1)
-                    const averageMiss = totalIssues / (occurrences + 1);
-                    // 计算号码概率
-                    numberProbabilityOld[num] = occurrences + averageMiss;
-                });
-
-                // 排序号码概率
-                const sortedNumbers = Object.entries(numberProbabilityOld).sort((a, b) => b[1] - a[1]);
-
-                // 显示统计结果
-                let statsContent = '<h3>号码概率</h3>';
-                sortedNumbers.forEach(([num, prob], index) => {
-                    statsContent += `<p>第${index + 1}位：号码 ${num} 概率值： ${prob.toFixed(2)} </p>`;
-                });
-                document.getElementById("statsDisplayOld").innerHTML = statsContent;
-
-                // 立即生成推荐内容
-                generateFortuneOld(sortedNumbers);
-
-            } else {
-                document.getElementById("dataDisplayOld").innerHTML = "<p>无法获取数据，请检查API或数据格式。</p>";
-            }
-        })
-        .catch(error => {
-            console.error('There has been a problem with your fetch operation:', error);
-            document.getElementById("dataDisplayOld").innerHTML = `<p>请求错误: ${error.message}</p>`;
-        });
-}
-
-function generateFortuneOld(sortedNumbers) {
-    if (!latestDataOld) return;
-
-    const openCodeArr = latestDataOld.openCode.split(",");
-    const tema = openCodeArr[6];
-    const pingma = openCodeArr.slice(0, 6);
-
-    // 根据特码数字选择对应位置序号中的号码
-    const temaIndex = parseInt(tema) - 1;
-    const temaRecommendedNumber = sortedNumbers[temaIndex] ? sortedNumbers[temaIndex][0] : '无推荐';
-    const temaRecommendedAnimal = numberToAnimal[temaRecommendedNumber.padStart(2, '0')];
-
-    // 根据平码数字选择对应位置序号中的号码
-    const pingmaRecommendedNumbers = pingma.map(num => {
-        const index = parseInt(num) - 1;
-        return sortedNumbers[index] ? sortedNumbers[index][0] : '无推荐';
-    });
-    const pingmaRecommendedAnimals = pingmaRecommendedNumbers.map(num => numberToAnimal[num.padStart(2, '0')]);
-
-    // 找出未在推荐号码中的生肖
-    const allAnimals = new Set(Object.values(numberToAnimal));
-    const recommendedAnimals = new Set([temaRecommendedAnimal, ...pingmaRecommendedAnimals]);
-    const unrecommendedAnimals = [...allAnimals].filter(animal => !recommendedAnimals.has(animal));
-
-    // 输出结果到页面
-    const resultDisplayOld = document.getElementById("resultDisplayOld");
-    resultDisplayOld.innerHTML = `
-      
-        <p style="font-size: 35px;">推荐生肖: ${unrecommendedAnimals.join(', ')}</p>
-    `;
-}
-
-function fetchDataNew() {
-    let currentYear = 2025;
-    let allData = [];
-
-    function fetchYearData(year) {
-        return fetch(`https://api.macaumarksix.com/history/macaujc2/y/${year}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            });
-    }
-
-    function processData(data) {
-        if(data.code === 200 && data.data && data.data.length > 0) {
-            allData = [...allData, ...data.data];
-            
-            if(allData.length < 366 && currentYear > 2024) {
-                currentYear--;
-                return fetchYearData(currentYear).then(processData);
-            }
-
-            const filteredData = allData.slice(0, 366); // 获取最近366期数据
-
-            // 保存最新一期的数据
-            latestDataNew = filteredData[0];
-
-            // 只显示最新一期的数据
-            const latestOpenCodeArr = latestDataNew.openCode.split(",").map(num => num ? num.trim() : '');
-            const latestPingma = latestOpenCodeArr.slice(0, 6);
-            const latestTema = latestOpenCodeArr[6];
-            const latestPingmaAnimals = latestPingma.map(num => num ? numberToAnimal[num.padStart(2, '0')] : '').join(',');
-            const latestTemaAnimal = latestTema ? numberToAnimal[latestTema.padStart(2, '0')] : '';
-            
-            let htmlContent = `
-                <div class="data-item">
-                    <p>期号: ${latestDataNew.expect}</p>
-                    <p>开奖时间: ${latestDataNew.openTime}</p>
-                    <p>平码: ${latestPingma.join(",")} </p>
-                    <p>生肖：${latestPingmaAnimals} </p>
-                    <p>特码: ${latestTema} </p>
-                    <p>生肖：${latestTemaAnimal} </p>
-                    <hr>
-                </div>`;
-
-            document.getElementById("dataDisplayNew").innerHTML = htmlContent;
-
-            // 重置频率统计
-            numberFrequencyNew = {};
-
-            // 统计号码出现次数
-            filteredData.forEach(item => {
-                if (!item || !item.openCode) return;
-                const openCodeArr = item.openCode.split(",").map(num => num ? num.trim() : '');
-                const allNumbers = [...openCodeArr.slice(0, 6), openCodeArr[6]];
-                allNumbers.forEach(num => {
-                    if (!num) return;
-                    const paddedNum = num.padStart(2, '0');
-                    numberFrequencyNew[paddedNum] = (numberFrequencyNew[paddedNum] || 0) + 1;
-                });
-            });
-
-            // 计算号码概率
-            Object.keys(numberFrequencyNew).forEach(num => {
-                const occurrences = numberFrequencyNew[num];
-                const averageMiss = filteredData.length / (occurrences + 1);
-                numberProbabilityNew[num] = occurrences * 0.7 + averageMiss * 0.3;
-            });
-
-            // 按照号码概率降序排序
-            const sortedNumbers = Object.entries(numberProbabilityNew).sort((a, b) => b[1] - a[1]);
-
-            // 显示统计结果
-            let statsContent = '<h3>号码概率</h3>';
-            sortedNumbers.forEach(([num, prob], index) => {
-                statsContent += `<p>第${index + 1}位：号码 ${num} 概率值： ${prob.toFixed(2)} </p>`;
-            });
-            document.getElementById("statsDisplayNew").innerHTML = statsContent;
-
-            // 生成推荐结果
-            generateFortuneNew(sortedNumbers);
-
-        } else {
-            document.getElementById("dataDisplayNew").innerHTML = "<p>无法获取数据，请检查API或数据格式。</p>";
+        function fetchData() {
+            fetchOldMacauData();
+            fetchNewMacauData();
         }
-    }
 
-    fetchYearData(currentYear)
-        .then(processData)
-        .catch(error => {
-            console.error('There has been a problem with your fetch operation:', error);
-            document.getElementById("dataDisplayNew").innerHTML = `<p>请求错误: ${error.message}</p>`;
-        });
-}
+        function fetchOldMacauData() {
+            fetch('https://his4.szyasidz.com/api/HistoryOpenInfo/2032/11')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 0) {
+                        const tableBody = document.getElementById('oldMacauTable').querySelector('tbody');
+                        tableBody.innerHTML = ''; // Clear existing data
+                        data.data.slice(0, 10).sort((a, b) => b.issue - a.issue).forEach(item => {
+                            const numbers = item.openCode.split(',');
+                            const animals = numbers.map(num => numberToAnimal[num.padStart(2, '0')]);
+                            const openCodeWithAnimal = `
+                                <div class="number-animal">
+                                    <div class="numbers">${numbers.map(num => `<span>${num}</span>`).join('')}</div>
+                                    <div class="animals">${animals.map(animal => `<span>${animal}</span>`).join('')}</div>
+                                </div>
+                            `;
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.issue}</td>
+                                <td>${openCodeWithAnimal}</td>
+                                <td>${item.openTime}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching old Macau data:', error));
+        }
 
-function generateFortuneNew(sortedNumbers) {
-    if (!latestDataNew) return;
+        function fetchNewMacauData() {
+            fetch('https://api.macaumarksix.com/history/macaujc2/y/2025')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 200) {
+                        const tableBody = document.getElementById('newMacauTable').querySelector('tbody');
+                        tableBody.innerHTML = ''; // Clear existing data
+                        data.data.slice(0, 10).sort((a, b) => b.expect - a.expect).forEach(item => {
+                            const numbers = item.openCode.split(',');
+                            const animals = item.zodiac.split(',');
+                            const openCodeWithAnimal = `
+                                <div class="number-animal">
+                                    <div class="numbers">${numbers.map(num => `<span>${num}</span>`).join('')}</div>
+                                    <div class="animals">${animals.map(animal => `<span>${animal}</span>`).join('')}</div>
+                                </div>
+                            `;
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${item.expect}</td>
+                                <td>${openCodeWithAnimal}</td>
+                                <td>${item.openTime}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error fetching new Macau data:', error));
+        }
 
-    const openCodeArr = latestDataNew.openCode.split(",").map(num => num.trim());
-    const tema = openCodeArr[6];
-    const pingma = openCodeArr.slice(0, 6);
+        function checkAutoRefresh() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
 
-    // 根据特码数字选择对应位置序号中的号码
-    const temaIndex = parseInt(tema) - 1;
-    const temaRecommendedNumber = sortedNumbers[temaIndex] ? sortedNumbers[temaIndex][0] : '无推荐';
-    const temaRecommendedAnimal = numberToAnimal[temaRecommendedNumber.padStart(2, '0')];
+            if (hours === 21 && minutes >= 30 && minutes < 40) {
+                if (!autoRefreshInterval) {
+                    autoRefreshInterval = setInterval(fetchData, 500);
+                }
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        }
 
-    // 根据平码数字选择对应位置序号中的号码
-    const pingmaRecommendedNumbers = pingma.map(num => {
-        const index = parseInt(num) - 1;
-        return sortedNumbers[index] ? sortedNumbers[index][0] : '无推荐';
-    });
-    const pingmaRecommendedAnimals = pingmaRecommendedNumbers.map(num => numberToAnimal[num.padStart(2, '0')]);
-
-    // 找出未在推荐号码中的生肖
-    const allAnimals = new Set(Object.values(numberToAnimal));
-    const recommendedAnimals = new Set([temaRecommendedAnimal, ...pingmaRecommendedAnimals]);
-    const unrecommendedAnimals = [...allAnimals].filter(animal => !recommendedAnimals.has(animal));
-
-    // 输出结果到页面
-    const resultDisplayNew = document.getElementById("resultDisplayNew");
-    resultDisplayNew.innerHTML = `
-        <p style="font-size: 35px;">推荐生肖: ${unrecommendedAnimals.join(', ')}</p>
-    `;
-}
-
-// 在页面加载时自动调用数据获取函数
-window.onload = function() {
-    fetchDataOld();
-    fetchDataNew();
-};
-</script>
-
+        // Check every minute if we need to start or stop auto-refreshing
+        setInterval(checkAutoRefresh, 60000);
+    </script>
 </body>
 </html>
